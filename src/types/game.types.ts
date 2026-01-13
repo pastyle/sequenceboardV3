@@ -1,6 +1,6 @@
 export type Suit = '♠' | '♣' | '♥' | '♦';
 export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'Q' | 'K' | 'A';
-export type Team = 'red' | 'blue'; // 'green' for 3 players later?
+export type Team = 'red' | 'blue' | 'green' | 'yellow';
 
 export interface Player {
     id: number;
