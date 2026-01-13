@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEQUENCE Board Game</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="game-header">
+            <div class="logo">SEQUENCE</div>
+            <div class="game-status" id="game-status">Waiting to start...</div>
+        </header>
+
+        <main class="game-area">
+            <aside class="player-list">
+                <h2>Players</h2>
+                <div class="player-card active">
+                    <div class="player-avatar" style="background-color: #FF595D;">P1</div>
+                    <div class="player-info">
+                        <span class="player-name">Player 1</span>
+                        <span class="player-team">Red Team</span>
+                    </div>
+                </div>
+                <div class="player-card">
+                    <div class="player-avatar" style="background-color: #0088FF;">P2</div>
+                    <div class="player-info">
+                        <span class="player-name">Player 2</span>
+                        <span class="player-team">Blue Team</span>
+                    </div>
+                </div>
+
+                <div class="deck-info">
+                    <h3>Main Deck</h3>
+                    <div class="deck-count">Cards: <span id="deck-count">0</span></div>
+                </div>
+            </aside>
+
+            <section class="board-container">
+                <div id="game-board" class="game-board">
+                    <!-- Board cells will be generated here -->
+                </div>
+            </section>
+
+            <aside class="player-hand-area">
+                <h3>Your Hand</h3>
+                <div id="player-hand" class="hand-cards">
+                    <!-- Player cards will be generated here -->
+                </div>
+            </aside>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

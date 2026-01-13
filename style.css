@@ -1,0 +1,406 @@
+:root {
+    /* Suit Colors */
+    --color-spades: #6A4C92;
+    --color-clubs: #00C8B3;
+    --color-hearts: #F68C69;
+    --color-diamonds: #AC7F5E;
+    --color-joker: #AFAFAF;
+
+    /* Game Colors */
+    --color-add-jack: #0088FF;
+    --color-remove-jack: #FF595D;
+    --bg-dark: #1e1e24;
+    --bg-panel: #2b2b36;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+
+    /* Layout */
+    --board-gap: 4px;
+    --card-radius: 6px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Header */
+.game-header {
+    height: 60px;
+    background-color: var(--bg-panel);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: linear-gradient(45deg, var(--color-clubs), var(--color-hearts));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Main Area */
+.game-area {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.player-list {
+    width: 250px;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+}
+
+.player-list h2 {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+}
+
+.player-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background-color: var(--bg-panel);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+}
+
+.player-card.active {
+    border-color: var(--color-clubs);
+    background-color: rgba(0, 200, 179, 0.1);
+}
+
+.player-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: white;
+}
+
+.player-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.player-name {
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.player-team {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.deck-info {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.deck-info h3 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.deck-count {
+    background-color: var(--bg-panel);
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--color-clubs);
+}
+
+/* Board */
+.board-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    overflow: auto;
+}
+
+.game-board {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(10, 1fr);
+    gap: var(--board-gap);
+    background-color: #111;
+    padding: var(--board-gap);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    aspect-ratio: 1;
+    height: 100%;
+    max-height: 80vh;
+}
+
+.board-cell {
+    background-color: #fff;
+    border-radius: var(--card-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.8rem;
+    /* Adjusted for better fit */
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.1s;
+    user-select: none;
+    color: #333;
+    /* Default text color */
+}
+
+/* Hover effect only for interactive cells */
+.board-cell:not(:has(.marker)):hover {
+    transform: scale(1.05);
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Suit Colors on Board */
+.suit-spades {
+    background-color: var(--color-spades);
+    color: white;
+}
+
+.suit-clubs {
+    background-color: var(--color-clubs);
+    color: white;
+}
+
+.suit-hearts {
+    background-color: var(--color-hearts);
+    color: white;
+}
+
+.suit-diamonds {
+    background-color: var(--color-diamonds);
+    color: white;
+}
+
+.suit-joker {
+    background-color: var(--color-joker);
+    color: white;
+}
+
+/* Corner Jokers */
+.board-cell.joker-cell {
+    background: radial-gradient(circle, #888 30%, var(--color-joker) 100%);
+    font-size: 0.7rem;
+    /* Smaller font for JOKER text */
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+
+/* Highlights */
+.board-cell.highlight-target {
+    box-shadow: inset 0 0 0 4px #FFD700;
+    /* Gold highlight */
+    animation: pulse 1.5s infinite;
+    z-index: 5;
+    cursor: pointer;
+}
+
+.board-cell.highlight-remove {
+    box-shadow: inset 0 0 0 4px #FF0000;
+    /* Red highlight for removal */
+    animation: shake 0.5s;
+    z-index: 5;
+    cursor: pointer;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: inset 0 0 0 2px #FFD700;
+    }
+
+    50% {
+        box-shadow: inset 0 0 0 6px #FFD700;
+    }
+
+    100% {
+        box-shadow: inset 0 0 0 2px #FFD700;
+    }
+}
+
+@keyframes shake {
+    0% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-2px);
+    }
+
+    50% {
+        transform: translateX(2px);
+    }
+
+    75% {
+        transform: translateX(-2px);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Markers */
+.marker {
+    width: 80%;
+    height: 80%;
+    border-radius: 50%;
+    position: absolute;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.marker-p1 {
+    background-color: #FF595D;
+    /* Red Team */
+    background: radial-gradient(circle at 30% 30%, #ff8a8d, #FF595D);
+}
+
+.marker-p2 {
+    background-color: #0088FF;
+    /* Blue Team */
+    background: radial-gradient(circle at 30% 30%, #5cb3ff, #0088FF);
+}
+
+.marker.sequence-complete {
+    box-shadow: 0 0 15px 5px #FFD700;
+    /* Gold glow */
+    border: 2px solid #FFF;
+    z-index: 20;
+    animation: winPulse 1s infinite alternate;
+}
+
+@keyframes winPulse {
+    from {
+        transform: scale(1);
+        box-shadow: 0 0 10px 2px #FFD700;
+    }
+
+    to {
+        transform: scale(1.2);
+        box-shadow: 0 0 20px 5px #FFD700;
+    }
+}
+
+/* Hand Area */
+.player-hand-area {
+    width: 120px;
+    /* Sidebar width */
+    background-color: var(--bg-panel);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-left: 1px solid rgba(255, 255, 255, 0.05);
+    flex-shrink: 0;
+    overflow-y: auto;
+}
+
+.player-hand-area h3 {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.hand-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    align-items: center;
+}
+
+.hand-card {
+    width: 60px;
+    height: 60px;
+    /* Square */
+    /* background-color: white; Removed */
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.7rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+    position: relative;
+    border: 2px solid transparent;
+}
+
+.hand-card:hover {
+    transform: translateX(-5px);
+    /* Slide left on hover */
+}
+
+.hand-card.selected {
+    transform: translateX(-15px);
+    border-color: #FFD700;
+    /* Selection selection */
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+/* Special Jacks in Hand */
+.hand-card.jack-add {
+    background-color: var(--color-add-jack);
+    color: white;
+    font-size: 2.5rem;
+    /* Larger for + icon */
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 136, 255, 0.4);
+}
+
+.hand-card.jack-remove {
+    background-color: var(--color-remove-jack);
+    color: white;
+    font-size: 2.5rem;
+    /* Larger for - icon */
+    border: none;
+    box-shadow: 0 4px 12px rgba(255, 89, 93, 0.4);
+}
