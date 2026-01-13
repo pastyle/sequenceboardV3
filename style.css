@@ -127,6 +127,28 @@ body {
     color: var(--text-secondary);
 }
 
+.deck-info {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.deck-info h3 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.deck-count {
+    background-color: var(--bg-panel);
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--color-clubs);
+}
+
 /* Board */
 .board-container {
     flex: 1;
@@ -158,7 +180,7 @@ body {
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 1.5rem;
+    font-size: 1.8rem;
     /* Adjusted for better fit */
     cursor: pointer;
     position: relative;
@@ -168,7 +190,8 @@ body {
     /* Default text color */
 }
 
-.board-cell:hover {
+/* Hover effect only for interactive cells */
+.board-cell:not(:has(.marker)):hover {
     transform: scale(1.05);
     z-index: 10;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -209,6 +232,101 @@ body {
     letter-spacing: 1px;
 }
 
+/* Highlights */
+.board-cell.highlight-target {
+    box-shadow: inset 0 0 0 4px #FFD700;
+    /* Gold highlight */
+    animation: pulse 1.5s infinite;
+    z-index: 5;
+    cursor: pointer;
+}
+
+.board-cell.highlight-remove {
+    box-shadow: inset 0 0 0 4px #FF0000;
+    /* Red highlight for removal */
+    animation: shake 0.5s;
+    z-index: 5;
+    cursor: pointer;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: inset 0 0 0 2px #FFD700;
+    }
+
+    50% {
+        box-shadow: inset 0 0 0 6px #FFD700;
+    }
+
+    100% {
+        box-shadow: inset 0 0 0 2px #FFD700;
+    }
+}
+
+@keyframes shake {
+    0% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-2px);
+    }
+
+    50% {
+        transform: translateX(2px);
+    }
+
+    75% {
+        transform: translateX(-2px);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
+
+/* Markers */
+.marker {
+    width: 80%;
+    height: 80%;
+    border-radius: 50%;
+    position: absolute;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.marker-p1 {
+    background-color: #FF595D;
+    /* Red Team */
+    background: radial-gradient(circle at 30% 30%, #ff8a8d, #FF595D);
+}
+
+.marker-p2 {
+    background-color: #0088FF;
+    /* Blue Team */
+    background: radial-gradient(circle at 30% 30%, #5cb3ff, #0088FF);
+}
+
+.marker.sequence-complete {
+    box-shadow: 0 0 15px 5px #FFD700;
+    /* Gold glow */
+    border: 2px solid #FFF;
+    z-index: 20;
+    animation: winPulse 1s infinite alternate;
+}
+
+@keyframes winPulse {
+    from {
+        transform: scale(1);
+        box-shadow: 0 0 10px 2px #FFD700;
+    }
+
+    to {
+        transform: scale(1.2);
+        box-shadow: 0 0 20px 5px #FFD700;
+    }
+}
+
 /* Hand Area */
 .player-hand-area {
     width: 120px;
@@ -240,8 +358,8 @@ body {
 }
 
 .hand-card {
-    width: 80px;
-    height: 80px;
+    width: 60px;
+    height: 60px;
     /* Square */
     /* background-color: white; Removed */
     border-radius: 6px;
@@ -249,7 +367,7 @@ body {
     align-items: center;
     justify-content: center;
     font-weight: bold;
-    font-size: 1.5rem;
+    font-size: 1.7rem;
     cursor: pointer;
     transition: transform 0.2s;
     position: relative;
@@ -259,6 +377,13 @@ body {
 .hand-card:hover {
     transform: translateX(-5px);
     /* Slide left on hover */
+}
+
+.hand-card.selected {
+    transform: translateX(-15px);
+    border-color: #FFD700;
+    /* Selection selection */
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
 }
 
 /* Special Jacks in Hand */
