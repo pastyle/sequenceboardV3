@@ -24,6 +24,7 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerIn
                 {players.map((player, idx) => {
                     const isCurrentTurn = idx === currentPlayerIndex;
                     const isLocalPlayer = player.uid === localPlayerUid;
+                    const isOffline = player.connectionStatus === 'offline';
 
                     return (
                         <div
@@ -32,8 +33,10 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerIn
                                 "flex items-center gap-3 p-3 bg-bg-panel rounded-lg mb-3 border border-transparent transition-all relative overflow-hidden",
                                 isCurrentTurn
                                     ? "border-clubs/50 bg-clubs/10 ring-1 ring-clubs/20 opacity-100 scale-[1.02] shadow-lg"
-                                    : "opacity-60 grayscale-[0.3]"
+                                    : "opacity-60 grayscale-[0.3]",
+                                isOffline && "opacity-40 grayscale border-red-500/30 bg-red-500/5 ring-1 ring-red-500/20"
                             )}
+                            title={isOffline ? "Disconnected" : "Connected"}
                         >
                             {isCurrentTurn && (
                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-clubs animate-pulse" />
@@ -54,7 +57,14 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerIn
                                         </span>
                                     )}
                                 </div>
-                                <span className="text-[10px] text-text-secondary capitalize font-medium">{player.team} Team</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-text-secondary capitalize font-medium">{player.team} Team</span>
+                                    {isOffline && (
+                                        <span className="text-[9px] text-red-400 font-bold uppercase tracking-wider animate-pulse">
+                                            OFFLINE
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     );

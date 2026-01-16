@@ -78,6 +78,7 @@ export const createGame = async (hostUid: string, hostName: string, maxPlayers: 
         name: hostName,
         isHost: true,
         status: 'online',
+        lastSeen: Date.now(),
         // Team and hand will be set later when game starts
     };
 
@@ -195,16 +196,28 @@ export const joinGame = async (roomId: string, playerUid: string, playerName: st
     // But for type safety, let's treat it as any or partial
     const gameData = gameSnap.data();
 
-    if (gameData.status !== 'waiting') {
-        throw new Error('Game is defined as already playing or finished');
-    }
+    // Debugging Login
+    console.log("Attempting Join/Reconnect:", {
+        roomId,
+        myUid: playerUid,
+        gameStatus: gameData.status,
+        existingPlayers: Object.keys(gameData.players)
+    });
 
+    // 1. Check if player is ALREADY in the game (Reconnect)
     if (gameData.players[playerUid]) {
+        console.log("Reconnect Successful for UID:", playerUid);
         // Player already in game, update status if needed
         await updateDoc(gameRef, {
-            [`players.${playerUid}.status`]: 'online'
+            [`players.${playerUid}.status`]: 'online',
+            [`players.${playerUid}.lastSeen`]: Date.now()
         });
         return;
+    }
+
+    // 2. If new player, game must be 'waiting'
+    if (gameData.status !== 'waiting') {
+        throw new Error('Game is defined as already playing or finished');
     }
 
     // Add new player
@@ -213,6 +226,7 @@ export const joinGame = async (roomId: string, playerUid: string, playerName: st
         name: playerName,
         isHost: false,
         status: 'online',
+        lastSeen: Date.now(),
     };
 
     await updateDoc(gameRef, {
@@ -262,13 +276,16 @@ export const makeMove = async (
     }
 
     // Get player's hand and remove used card
-    const playerHand = gameData.players[playerUid].hand || [];
-    const newHand = playerHand.filter(card => card !== cardUsed);
+    const playerHand = [...(gameData.players[playerUid].hand || [])];
+    const cardIndex = playerHand.indexOf(cardUsed);
+    if (cardIndex > -1) {
+        playerHand.splice(cardIndex, 1);
+    }
 
     // Draw new card from deck
     const newDeck = [...gameData.deck];
     if (newDeck.length > 0) {
-        newHand.push(newDeck.pop()!);
+        playerHand.push(newDeck.pop()!);
     }
 
     // Get next player from turnOrder
@@ -280,7 +297,7 @@ export const makeMove = async (
     const updates: any = {
         board: flatBoard,
         deck: newDeck,
-        [`players.${playerUid}.hand`]: newHand,
+        [`players.${playerUid}.hand`]: playerHand,
         currentTurn: nextPlayerUid,
         lastMove: {
             playerId: playerUid,
@@ -317,5 +334,29 @@ export const subscribeToGame = (roomId: string, callback: (game: FirestoreGame |
         }
     });
 };
+
+export const updateHeartbeat = async (roomId: string, playerUid: string): Promise<void> => {
+    // We use a light update just for the timestamp
+    const gameRef = doc(db, GAMES_COLLECTION, roomId);
+    await updateDoc(gameRef, {
+        [`players.${playerUid}.lastSeen`]: Date.now(),
+        [`players.${playerUid}.status`]: 'online'
+    });
+};
+
+export const setPlayerOffline = async (roomId: string, playerUid: string): Promise<void> => {
+    const gameRef = doc(db, GAMES_COLLECTION, roomId);
+    await updateDoc(gameRef, {
+        [`players.${playerUid}.status`]: 'offline'
+    });
+};
+
+export const removePlayer = async (roomId: string, playerUid: string): Promise<void> => {
+    const gameRef = doc(db, GAMES_COLLECTION, roomId);
+    await updateDoc(gameRef, {
+        [`players.${playerUid}`]: deleteField()
+    });
+};
+
 
 

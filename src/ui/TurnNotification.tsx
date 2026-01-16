@@ -6,6 +6,7 @@ interface TurnNotificationProps {
     playerName?: string;
     teamColor?: string;
     winner: Team | null;
+    winnerText?: string;
     localPlayerTeam?: Team;
     isHost?: boolean;
     onRestart: () => void;
@@ -16,13 +17,14 @@ export const TurnNotification: React.FC<TurnNotificationProps> = ({
     playerName,
     teamColor,
     winner,
+    winnerText,
     localPlayerTeam,
     isHost,
     onRestart
 }) => {
     const [showTurnBanner, setShowTurnBanner] = useState(false);
     const [hasPlayedEndSound, setHasPlayedEndSound] = useState(false);
-    const turnTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Effect for Turn Notification
     useEffect(() => {
@@ -95,7 +97,7 @@ export const TurnNotification: React.FC<TurnNotificationProps> = ({
 
                     {isGameOver && (
                         <span className="text-lg font-bold mt-2 text-clubs">
-                            {`TIME ${winner?.toUpperCase()} VENCEU!`}
+                            {winnerText || `TIME ${winner?.toUpperCase()} VENCEU!`}
                         </span>
                     )}
                 </div>

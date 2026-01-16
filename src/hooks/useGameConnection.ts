@@ -5,14 +5,47 @@ import {
     joinGame as joinGameService,
     leaveGame as leaveGameService,
     subscribeToGame,
-    updateGameStatus as updateGameStatusService
+    updateGameStatus as updateGameStatusService,
+    updateHeartbeat,
+    setPlayerOffline
 } from '../services/game';
+import { useAuth } from './useAuth';
 
 export const useGameConnection = (initialRoomId: string | null = null) => {
     const [game, setGame] = useState<FirestoreGame | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
     const [roomId, setRoomId] = useState<string | null>(initialRoomId);
+    const { user } = useAuth();
+
+    // Heartbeat Loop & Disconnect Handler
+    useEffect(() => {
+        if (!roomId || !user) return;
+
+        // 1. Send initial heartbeat
+        updateHeartbeat(roomId, user.uid);
+
+        // 2. Setup interval for every 5s
+        const intervalId = setInterval(() => {
+            updateHeartbeat(roomId, user.uid).catch(err => {
+                console.error("Heartbeat failed", err);
+            });
+        }, 5000);
+
+        // 3. Handle tab close / refresh
+        const handleBeforeUnload = () => {
+            setPlayerOffline(roomId, user.uid);
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            // Also mark offline on unmount (e.g. navigation away)
+            setPlayerOffline(roomId, user.uid);
+        };
+    }, [roomId, user]);
 
     // Subscribe to game updates when roomId changes
     useEffect(() => {
@@ -34,6 +67,8 @@ export const useGameConnection = (initialRoomId: string | null = null) => {
         try {
             const newRoomId = await createGameService(userUid, userName, maxPlayers);
             setRoomId(newRoomId);
+            localStorage.setItem('lastGameRoomId', newRoomId);
+            localStorage.setItem('lastPlayerName', userName);
             return newRoomId;
         } catch (err) {
             setError(err as Error);
@@ -49,6 +84,8 @@ export const useGameConnection = (initialRoomId: string | null = null) => {
         try {
             await joinGameService(code, userUid, userName);
             setRoomId(code);
+            localStorage.setItem('lastGameRoomId', code);
+            localStorage.setItem('lastPlayerName', userName);
         } catch (err) {
             setError(err as Error);
             throw err;

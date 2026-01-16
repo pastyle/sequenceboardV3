@@ -64,10 +64,31 @@ const GameRoute = () => {
   }
 
   // Active Game UI
+  // Active Game UI
   const currentPlayer = state.players[state.currentPlayerIndex];
-  const statusText = state.winner
-    ? `GAME OVER! ${state.winner} Wins!`
-    : `${currentPlayer.name}'s Turn`;
+
+  // Winner Display Logic:
+  // If 2v2 (4 players), show Team Name (Red/Blue).
+  // If 2 or 3 players, show Player Name.
+  let winnerText = '';
+  if (state.winner) {
+    if (state.players.length === 4) {
+      winnerText = `${state.winner.toUpperCase()} TEAM WINS!`;
+    } else {
+      // Find player(s) who won - wait, winner is Team. So we need to map back if 1v1.
+      // Actually for 1v1, Team Red is Player 1.
+      // For 3 players, Team Green is Player 3.
+      // So we can look for players in that team.
+      const winningPlayers = state.players.filter(p => p.team === state.winner);
+      if (winningPlayers.length === 1) {
+        winnerText = `${winningPlayers[0].name} Wins!`;
+      } else {
+        winnerText = `${state.winner.toUpperCase()} TEAM WINS!`;
+      }
+    }
+  }
+
+  const statusText = winnerText || (isMyTurn ? "YOUR TURN" : `${currentPlayer.name}'s Turn`);
 
   return (
     <div className="flex flex-col h-screen w-full bg-bg-dark text-text-primary font-outfit overflow-hidden">
@@ -76,6 +97,8 @@ const GameRoute = () => {
         winner={state.winner}
         onReset={resetGame}
         onDebugWin={setupWinScenario}
+        isMyTurn={isMyTurn}
+        roomId={game?.roomId}
       />
 
       {/* Turn Error Toast */}
@@ -91,6 +114,7 @@ const GameRoute = () => {
         playerName={localPlayer?.name}
         teamColor={localPlayer?.team ? TEAM_COLORS[localPlayer.team] : undefined}
         winner={state.winner}
+        winnerText={winnerText}
         localPlayerTeam={localPlayer?.team}
         isHost={localPlayer?.isHost}
         onRestart={resetGame}

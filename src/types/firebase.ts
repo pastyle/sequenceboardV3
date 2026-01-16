@@ -11,6 +11,7 @@ export interface FirestorePlayer {
     color?: PlayerColor;
     isHost: boolean;
     status: 'online' | 'offline';
+    lastSeen: number; // Timestamp for heartbeat
     hand?: string[]; // Array of card IDs
     team?: number; // 1 or 2 (or 3)
 }

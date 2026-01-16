@@ -146,7 +146,8 @@ function gameReducer(state: GameState, action: Action): GameState {
                     team: (fsPlayer.color || (index % 2 === 0 ? 'red' : 'blue')) as Team,
                     hand: fsPlayer.hand || [],
                     uid: uid,
-                    isHost: fsPlayer.isHost
+                    isHost: fsPlayer.isHost,
+                    connectionStatus: fsPlayer.status
                 };
             });
 
@@ -178,9 +179,53 @@ function gameReducer(state: GameState, action: Action): GameState {
     }
 }
 
+// Timeout constants
+const OFFLINE_THRESHOLD_MS = 15000; // 15s without heartbeat -> offline
+const REMOVE_THRESHOLD_MS = 60000; // 60s without heartbeat -> remove
+
 export function useGameState(game?: FirestoreGame | null, currentUserUid?: string) {
     const [state, dispatch] = useReducer(gameReducer, null, createInitialState);
     const [turnError, setTurnError] = useState<string | null>(null);
+
+    // Monitor Players (Host Only)
+    useEffect(() => {
+        if (!game || !currentUserUid) return;
+
+        const myPlayer = game.players[currentUserUid];
+        if (!myPlayer?.isHost) return;
+
+        const intervalId = setInterval(() => {
+            const now = Date.now();
+            Object.values(game.players).forEach(async (player) => {
+                if (player.uid === currentUserUid) return; // Don't check self
+
+                // Skip if we don't have a lastSeen yet (recently joined)
+                if (!player.lastSeen) return;
+
+                const timeSinceLastSeen = now - player.lastSeen;
+
+                // 1. Mark offline if > 15s and currently online
+                if (timeSinceLastSeen > OFFLINE_THRESHOLD_MS && player.status === 'online') {
+                    // Import dynamically to avoid circular deps if needed, though useGameState is higher level usually
+                    try {
+                        const { setPlayerOffline } = await import('../services/game');
+                        await setPlayerOffline(game.roomId, player.uid);
+                    } catch (e) { console.error("Error setting offline", e) }
+                }
+
+                // 2. Remove if > 60s
+                if (timeSinceLastSeen > REMOVE_THRESHOLD_MS) {
+                    try {
+                        const { removePlayer } = await import('../services/game');
+                        await removePlayer(game.roomId, player.uid);
+                    } catch (e) { console.error("Error removing player", e) }
+                }
+            });
+        }, 5000);
+
+        return () => clearInterval(intervalId);
+
+    }, [game, currentUserUid]);
 
     useEffect(() => {
         if (game && currentUserUid) {
@@ -206,8 +251,7 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
     }, [state.winner, isMyTurn]);
 
     const handleBoardClick = useCallback(async (row: number, col: number) => {
-        if (state.winner || state.selectedCardIndex === -1) return;
-
+        if (state.winner) return;
         if (!isMyTurn()) {
             setTurnError('NÃO É A SUA VEZ');
             setTimeout(() => setTurnError(null), 2000);
@@ -215,9 +259,23 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
         }
 
         const currentPlayer = state.players[state.currentPlayerIndex];
-        const selectedCard = currentPlayer.hand[state.selectedCardIndex];
+        let selectedCard = state.selectedCardIndex !== -1 ? currentPlayer.hand[state.selectedCardIndex] : null;
 
-        const move = isValidMove(selectedCard, row, col, state.board, currentPlayer.team);
+        // Auto-select card logic
+        if (!selectedCard) {
+            const boardCard = state.board[row][col].card;
+            // Find card in hand matching board card
+            // Exclude Jacks from auto-select (User Req: "Essa interação não pode acontecer com os VALETES")
+            const cardIndex = currentPlayer.hand.findIndex(c => c === boardCard);
+            if (cardIndex !== -1 && !boardCard.startsWith('J')) {
+                selectedCard = currentPlayer.hand[cardIndex];
+                // We don't need to dispatch SELECT_CARD, we just use it directly for the move
+            } else {
+                return; // Nothing to do if no card selected and no auto-match
+            }
+        }
+
+        const move = isValidMove(selectedCard!, row, col, state.board, currentPlayer.team);
 
         if (move.isValid && game && currentUserUid) {
             try {

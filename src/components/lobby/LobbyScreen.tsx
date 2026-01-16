@@ -35,6 +35,29 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
                         Create New Game
                     </button>
 
+                    {localStorage.getItem('lastGameRoomId') && (
+                        <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
+                            <div className="text-white/60 text-sm mb-2">Previous Game Found</div>
+                            <button
+                                onClick={() => {
+                                    const code = localStorage.getItem('lastGameRoomId');
+                                    const name = localStorage.getItem('lastPlayerName');
+
+                                    if (code && name) {
+                                        setJoinCode(code);
+                                        setJoinName(name);
+                                        onJoinGame(code, name);
+                                    } else if (code) {
+                                        setJoinCode(code);
+                                    }
+                                }}
+                                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+                            >
+                                <span>↺</span> Reconnect to {localStorage.getItem('lastGameRoomId')}
+                            </button>
+                        </div>
+                    )}
+
                     <div className="bg-white/10 p-6 rounded-xl backdrop-blur-sm">
                         <h2 className="text-xl font-bold mb-4 text-center">Join Existing Game</h2>
                         <form onSubmit={handleJoin} className="space-y-4">

@@ -9,6 +9,7 @@ export interface Player {
     hand: string[]; // e.g. "2♠"
     uid?: string;
     isHost?: boolean;
+    connectionStatus?: 'online' | 'offline';
 }
 
 export interface CellPosition {

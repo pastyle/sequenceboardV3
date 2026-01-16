@@ -17,7 +17,11 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
     onLeaveGame,
     loading
 }) => {
-    const players = Object.values(game.players);
+    const players = Object.values(game.players).sort((a, b) => {
+        if (a.isHost) return -1;
+        if (b.isHost) return 1;
+        return a.name.localeCompare(b.name);
+    });
     const isHost = game.players[currentUser?.uid || '']?.isHost;
     // Constraint: Must match exact maxPlayers to start (for teams balance)
     const isReady = players.length === game.maxPlayers;

@@ -38,6 +38,7 @@ export function checkWin(boardState: BoardState, lastMove: { row: number, col: n
         }
 
         if (count >= 5) {
+            console.log("WIN DETECTED", { team, directions: [dr, dc], sequence: sequenceCells });
             return { isWin: true, sequence: sequenceCells };
         }
     }
@@ -50,8 +51,16 @@ function isValidCell(r: number, c: number): boolean {
 
 function isTeamOrCorner(r: number, c: number, team: Team, boardState: BoardState): boolean {
     const isCorner = (r === 0 && c === 0) || (r === 0 && c === 9) || (r === 9 && c === 0) || (r === 9 && c === 9);
-    // Legacy logic: Corner checks JUST coordinate.
-    // Note: If boardState has a marker, it matches team. If corner, it matches automatically (wild).
-    const cellOwner = boardState[r][c].owner;
-    return cellOwner === team || isCorner;
+    // Explicit valid check
+    if (r < 0 || r >= 10 || c < 0 || c >= 10) return false;
+
+    // Check owner
+    const cell = boardState[r][c];
+    if (!cell) return false; // Should not happen with valid bounds
+
+    // Corners count for everyone
+    if (isCorner) return true;
+
+    // Must match team exactly
+    return cell.owner === team;
 }
