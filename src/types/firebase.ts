@@ -1,5 +1,5 @@
 export type GameStatus = 'waiting' | 'playing' | 'finished';
-export type PlayerColor = 'red' | 'blue' | 'green' | 'yellow';
+export type PlayerColor = 'red' | 'blue' | 'green';
 
 // 10x10 matrix of card IDs (or whatever represents a card on the board)
 // Assuming string for now (e.g., 'JC', '2H', etc.)
@@ -29,6 +29,7 @@ export interface FirestoreGame {
     players: { [uid: string]: FirestorePlayer }; // Map UID -> Player Data
     board: BoardMatrix;
     currentTurn: string; // UID of current player
+    turnOrder: string[]; // List of UIDs defining the turn sequence
     deck: string[]; // Remaining cards in deck
     lastMove?: {
         playerId: string;

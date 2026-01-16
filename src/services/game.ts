@@ -131,25 +131,37 @@ export const startGame = async (roomId: string): Promise<void> => {
     // Assign Teams & Deal Cards
     const updates: any = {};
 
-    // Sorting UIDs to ensure deterministic order if needed, or just use keys order
-    // Let's use the order they joined? Keys are unordered. 
-    // Ideally we should sort by join time if tracked, but for now just random/keys order.
+    // Determine Turn Order based on alternation
+    let turnOrder: string[] = [];
+    if (playerCount === 4) {
+        // We want T1, T2, T1, T2
+        const redTeam: string[] = [];
+        const blueTeam: string[] = [];
 
-    playerUids.forEach((uid, index) => {
-        // 0-indexed index
+        playerUids.forEach((uid, index) => {
+            if (index % 2 === 0) redTeam.push(uid);
+            else blueTeam.push(uid);
+        });
+
+        // P1(R), P2(B), P3(R), P4(B)
+        turnOrder = [redTeam[0], blueTeam[0], redTeam[1], blueTeam[1]];
+    } else {
+        // For 2 or 3 players, order of joining is fine
+        turnOrder = [...playerUids];
+    }
+
+    turnOrder.forEach((uid, index) => {
+        // 0-indexed index in turnOrder
         let team = 0;
 
         if (playerCount === 2) {
-            // P1(0) -> Red(1), P2(1) -> Blue(2)
+            // P1 -> Red(1), P2 -> Blue(2)
             team = index === 0 ? 1 : 2;
         } else if (playerCount === 3) {
             // P1 -> Red(1), P2 -> Blue(2), P3 -> Green(3)
             team = index + 1;
         } else if (playerCount === 4) {
-            // P1(0) -> Red(1)
-            // P2(1) -> Blue(2)
-            // P3(2) -> Red(1)
-            // P4(3) -> Blue(2)
+            // Alternation: R, B, R, B
             team = (index % 2) + 1;
         }
 
@@ -158,13 +170,15 @@ export const startGame = async (roomId: string): Promise<void> => {
 
         updates[`players.${uid}.team`] = team;
         updates[`players.${uid}.hand`] = hand;
-        updates[`players.${uid}.color`] = team === 1 ? 'red' : (team === 2 ? 'blue' : (team === 3 ? 'green' : 'yellow'));
+        updates[`players.${uid}.color`] = team === 1 ? 'red' : (team === 2 ? 'blue' : 'green');
     });
 
     updates['deck'] = deck;
     updates['status'] = 'playing';
-    // Set first player (Key at index 0)
-    updates['currentTurn'] = playerUids[0];
+    updates['turnOrder'] = turnOrder;
+    updates['currentTurn'] = turnOrder[0];
+    updates['board'] = Array(100).fill('');
+    updates['winnerTeam'] = deleteField();
 
     await updateDoc(gameRef, updates);
 };
@@ -226,7 +240,8 @@ export const makeMove = async (
     col: number,
     team: string,
     cardUsed: string,
-    moveType: 'place' | 'remove'
+    moveType: 'place' | 'remove',
+    winnerTeam?: number
 ): Promise<void> => {
     const gameRef = doc(db, GAMES_COLLECTION, roomId);
     const gameSnap = await getDoc(gameRef);
@@ -256,14 +271,13 @@ export const makeMove = async (
         newHand.push(newDeck.pop()!);
     }
 
-    // Get next player
-    const playerUids = Object.keys(gameData.players).sort();
-    const currentIndex = playerUids.indexOf(playerUid);
-    const nextIndex = (currentIndex + 1) % playerUids.length;
-    const nextPlayerUid = playerUids[nextIndex];
+    // Get next player from turnOrder
+    const turnOrder = gameData.turnOrder || Object.keys(gameData.players).sort();
+    const currentIndex = turnOrder.indexOf(playerUid);
+    const nextIndex = (currentIndex + 1) % turnOrder.length;
+    const nextPlayerUid = turnOrder[nextIndex];
 
-    // Update Firestore
-    await updateDoc(gameRef, {
+    const updates: any = {
         board: flatBoard,
         deck: newDeck,
         [`players.${playerUid}.hand`]: newHand,
@@ -273,7 +287,15 @@ export const makeMove = async (
             card: cardUsed,
             position: { r: row, c: col }
         }
-    });
+    };
+
+    if (winnerTeam) {
+        updates.winnerTeam = winnerTeam;
+        updates.status = 'finished';
+    }
+
+    // Update Firestore
+    await updateDoc(gameRef, updates);
 };
 
 export const subscribeToGame = (roomId: string, callback: (game: FirestoreGame | null) => void) => {

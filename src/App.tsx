@@ -4,11 +4,12 @@ import { useGameState } from './hooks/useGameState';
 import { Board } from './components/Board';
 import { PlayerHand } from './components/PlayerHand';
 import { GameHeader } from './ui/GameHeader';
-import { PlayerList } from './ui/PlayerList';
+import { PlayerList, TEAM_COLORS } from './ui/PlayerList';
 import { useAuth } from './hooks/useAuth';
 import { useGameConnection } from './hooks/useGameConnection';
 import { LobbyScreen } from './components/lobby/LobbyScreen';
 import { WaitingRoom } from './components/lobby/WaitingRoom';
+import { TurnNotification } from './ui/TurnNotification';
 
 // Game Route Wrapper to handle logic
 const GameRoute = () => {
@@ -32,27 +33,14 @@ const GameRoute = () => {
 
   // Handle joining via URL if not already connected
   useEffect(() => {
-    // Only redirect if: 
-    // 1. We have a code
-    // 2. We are not loading
-    // 3. We successfully tried to fetch (game is null) AND no error?
-    // Actually, if game is null after loading, it means room doesn't exist.
-    // We should show error or redirect.
     if (code && !gameLoading && !game && !error && user) {
-      // Optional: Could verify if user is allowed to join here? 
-      // For now, if we loaded and got no game (and no error?), it might mean it doesn't exist.
-      // But wait: useGameConnection returns null if !roomId.
-      // If roomId is set (via props), useGameConnection tries to fetch. If doc doesn't exist, callback(null).
-      // So if !game and !loading, navigate home.
       console.log("Game not found or failed to load. Redirecting to home.");
       navigate('/');
     }
   }, [code, game, gameLoading, error, navigate, user]);
 
   // Game UI Logic
-  const { state, handleCardClick, handleBoardClick, resetGame, setupWinScenario, turnError } = useGameState(game, user?.uid);
-  // NOTE: useGameState now syncs with Firestore state.
-  // We render the BOARD based on `state.board`, which updates from `game` (Firestore).
+  const { state, handleCardClick, handleBoardClick, resetGame, setupWinScenario, turnError, localPlayer, isMyTurn } = useGameState(game, user?.uid);
 
   if (authLoading || gameLoading) {
     return <div className="min-h-screen bg-bg-dark text-white flex items-center justify-center">Loading...</div>;
@@ -97,28 +85,42 @@ const GameRoute = () => {
         </div>
       )}
 
+      {/* Turn Notification Banner */}
+      <TurnNotification
+        isMyTurn={isMyTurn}
+        playerName={localPlayer?.name}
+        teamColor={localPlayer?.team ? TEAM_COLORS[localPlayer.team] : undefined}
+        winner={state.winner}
+        localPlayerTeam={localPlayer?.team}
+        isHost={localPlayer?.isHost}
+        onRestart={resetGame}
+      />
+
       <main className="flex flex-1 overflow-hidden relative">
         <PlayerList
           players={state.players}
           currentPlayerIndex={state.currentPlayerIndex}
           deckCount={state.deck.length}
+          localPlayerUid={user?.uid}
         />
 
         <section className="flex-1 flex items-center justify-center p-8 overflow-auto">
           <Board
             board={state.board}
             currentPlayer={currentPlayer}
-            selectedCard={state.selectedCardIndex !== -1 ? currentPlayer.hand[state.selectedCardIndex] : null}
+            selectedCard={localPlayer && state.selectedCardIndex !== -1 ? localPlayer.hand[state.selectedCardIndex] : null}
             winningCells={state.winningCells}
             onCellClick={handleBoardClick}
           />
         </section>
 
-        <PlayerHand
-          hand={currentPlayer.hand}
-          selectedCardIndex={state.selectedCardIndex}
-          onCardClick={handleCardClick}
-        />
+        {localPlayer && (
+          <PlayerHand
+            hand={localPlayer.hand}
+            selectedCardIndex={state.selectedCardIndex}
+            onCardClick={handleCardClick}
+          />
+        )}
       </main>
     </div>
   );

@@ -30,7 +30,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
                 <div className="space-y-4">
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="w-full bg-gradient-to-r from-game-red to-red-600 text-white text-xl font-bold py-4 rounded-xl shadow-lg hover:scale-105 transition-transform"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold py-4 rounded-xl transition-colors"
                     >
                         Create New Game
                     </button>
@@ -43,7 +43,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
                                 placeholder="Your Name"
                                 value={joinName}
                                 onChange={(e) => setJoinName(e.target.value)}
-                                className="w-full p-3 rounded bg-white/10 border border-white/20 focus:border-game-blue outline-none transition-colors placeholder-white/50"
+                                className="w-full p-3 rounded bg-white/10 border border-white/20 focus:border-game-blue outline-none transition-colors placeholder-white/50 text-white"
                                 required
                             />
                             <div className="flex gap-2">
@@ -52,7 +52,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
                                     placeholder="Room Code (6 chars)"
                                     value={joinCode}
                                     onChange={(e) => setJoinCode(e.target.value)}
-                                    className="flex-1 p-3 rounded bg-white/10 border border-white/20 focus:border-game-blue outline-none transition-colors placeholder-white/50 uppercase font-mono"
+                                    className="flex-1 p-3 rounded bg-white/10 border border-white/20 focus:border-game-blue outline-none transition-colors placeholder-white/50 uppercase font-mono text-white"
                                     maxLength={6}
                                     required
                                 />

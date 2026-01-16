@@ -51,9 +51,9 @@ export const BoardCell: React.FC<BoardCellProps> = ({
             {owner && (
                 <div className={twMerge(
                     "absolute w-[80%] h-[80%] rounded-full shadow-md border-[3px] border-[rgb(0_0_0_/_0.1)]",
-                    owner === 'red'
-                        ? "bg-[radial-gradient(circle_at_30%_30%,#ff8a8d,#FF595D)]"
-                        : "bg-[radial-gradient(circle_at_30%_30%,#5cb3ff,#0088FF)]",
+                    owner === 'red' && "bg-[radial-gradient(circle_at_30%_30%,#ff8a8d,#FF595D)]",
+                    owner === 'blue' && "bg-[radial-gradient(circle_at_30%_30%,#5cb3ff,#0088FF)]",
+                    owner === 'green' && "bg-[radial-gradient(circle_at_30%_30%,#66ffa3,#22c55e)]",
                     isWinningCell && "shadow-[0_0_15px_5px_#FFD700] border-white animate-winPulse z-30"
                 )} />
             )}

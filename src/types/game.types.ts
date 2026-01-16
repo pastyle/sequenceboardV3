@@ -1,12 +1,14 @@
 export type Suit = '♠' | '♣' | '♥' | '♦';
 export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'Q' | 'K' | 'A';
-export type Team = 'red' | 'blue' | 'green' | 'yellow';
+export type Team = 'red' | 'blue' | 'green';
 
 export interface Player {
     id: number;
     name: string;
     team: Team;
     hand: string[]; // e.g. "2♠"
+    uid?: string;
+    isHost?: boolean;
 }
 
 export interface CellPosition {
