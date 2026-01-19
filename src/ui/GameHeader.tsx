@@ -7,7 +7,6 @@ interface GameHeaderProps {
     onReset: () => void;
     onDebugWin: () => void;
     isMyTurn: boolean;
-    isMyTurn: boolean;
     roomId?: string;
     turnStartedAt?: number;
     turnTimeLimit?: number; // e.g. 30000

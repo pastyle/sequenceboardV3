@@ -13,8 +13,7 @@ interface BotMove {
 export const calculateBotMove = (
     board: BoardState,
     player: Player,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    allPlayers: Player[]
+    _allPlayers: Player[]
 ): BotMove | null => {
     const possibleMoves: BotMove[] = [];
 
@@ -116,7 +115,7 @@ function scorePlacement(board: BoardState, r: number, c: number, team: Team): nu
     return score;
 }
 
-function scoreRemoval(board: BoardState, r: number, c: number, myTeam: Team): number {
+function scoreRemoval(board: BoardState, r: number, c: number, _myTeam: Team): number {
     const opponentTeam = board[r][c].owner;
     if (!opponentTeam) return 0;
 

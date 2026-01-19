@@ -140,15 +140,15 @@ function gameReducer(state: GameState, action: Action): GameState {
             const playerUids = (game.turnOrder || Object.keys(game.players).sort())
                 .filter(uid => game.players[uid]); // Critical: only process players that still exist
 
-            const newPlayers: Player[] = playerUids
+            const newPlayers: Player[] = (playerUids
                 .map((uid, index) => {
                     const fsPlayer = game.players[uid];
 
-                    // At this point fsPlayer should always exist due to filter above,
-                    // but keeping safety check for extra protection
+                    // Safety check: skip if player data is temporarily missing
+                    // (can happen during reconnections/bot deactivation)
                     if (!fsPlayer || !fsPlayer.name) {
-                        console.error(`[GAME STATE] Player ${uid} missing after filter - this should not happen`);
-                        throw new Error(`Critical: Player ${uid} missing from game data`);
+                        console.warn(`[GAME STATE] Player ${uid} temporarily missing, skipping...`);
+                        return null;
                     }
 
                     return {
@@ -162,7 +162,10 @@ function gameReducer(state: GameState, action: Action): GameState {
                         isBot: fsPlayer.isBot,
                         lastSeen: fsPlayer.lastSeen
                     };
-                });
+                })
+                .filter(p => p !== null)) as Player[];
+
+
 
 
             const newBoard = createInitialBoard();
@@ -253,8 +256,8 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
                     timeSinceLastSeen: Math.round(timeSinceLastSeen / 1000) + 's'
                 });
 
-                // Status & Removal Logic
-                if (player.lastSeen) {
+                // Status & Removal Logic (skip for bots - they don't have real connections)
+                if (player.lastSeen && !player.isBot) {
                     if (timeSinceLastSeen > OFFLINE_THRESHOLD_MS && player.status === 'online') {
                         await setPlayerOffline(game.roomId, player.uid).catch(console.error);
                     }
@@ -310,24 +313,12 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
                         return;
                     }
 
-                    // Reconstruct local state for bot (lightweight)
-                    const boardState = game.board.map(row => row.map(cell => ({
-                        owner: (cell && (cell === 'red' || cell === 'blue' || cell === 'green')) ? (cell === 'red' ? 1 : cell === 'blue' ? 2 : 3) : undefined,
-                        // ignoring other props for bot
-                    })));
 
-                    // Simple mapping hack for Bot Calculator
-                    // GameState type might be complex. simplify bot input?
-                    // Let's pass the raw board from FirestoreGame if bot supports it? 
-                    // Bot expects BoardState which has objects.
-                    // Let's map it.
-                    // (TODO: Ensure BoardState type matches)
-
-                    // Helper to get Team ID from string
+                    // Map board to Bot format
                     const getTeam = (c: string) => c === 'red' ? 1 : c === 'blue' ? 2 : 3;
                     const mappedBoard = game.board.map(r => r.map(c => ({
                         owner: c ? getTeam(c) : undefined,
-                        isSequence: false // Bot doesn't strictly need this for move calc usually
+                        isSequence: false
                     })));
 
                     const botPlayer = {
