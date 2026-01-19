@@ -15,6 +15,28 @@ export const TEAM_COLORS = {
     green: '#22c55e'
 };
 
+const OfflineTimer: React.FC<{ lastSeen?: number }> = ({ lastSeen }) => {
+    const [timeLeft, setTimeLeft] = React.useState(0);
+
+    React.useEffect(() => {
+        if (!lastSeen) return;
+        const interval = setInterval(() => {
+            const elapsed = Date.now() - lastSeen;
+            const remaining = Math.max(0, 30000 - elapsed);
+            setTimeLeft(Math.ceil(remaining / 1000));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [lastSeen]);
+
+    if (timeLeft <= 0) return null; // Bot should take over
+
+    return (
+        <span className="text-[11px] text-orange-400 font-extrabold uppercase tracking-wider ml-1">
+            ({timeLeft}s)
+        </span>
+    );
+};
+
 export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerIndex, deckCount, localPlayerUid }) => {
     return (
         <aside className="w-[250px] bg-black/20 p-4 border-r border-white/5 shrink-0 flex flex-col h-full">
@@ -50,7 +72,10 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerIn
                             </div>
                             <div className="flex flex-col min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="font-bold text-sm truncate max-w-[120px]">{player.name}</span>
+                                    <span className="font-bold text-sm truncate max-w-[120px]">
+                                        {player.name}
+                                        {player.isBot && <span className="ml-2 text-xs bg-purple-500 text-white px-1 py-0.5 rounded" title="Bot Playing">🤖 BOT</span>}
+                                    </span>
                                     {isLocalPlayer && (
                                         <span className="bg-white/10 text-[10px] px-1.5 py-0.5 rounded text-white font-extrabold tracking-tighter uppercase whitespace-nowrap">
                                             VOCÊ
@@ -59,10 +84,13 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerIn
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="text-[10px] text-text-secondary capitalize font-medium">{player.team} Team</span>
-                                    {isOffline && (
-                                        <span className="text-[9px] text-red-400 font-bold uppercase tracking-wider animate-pulse">
-                                            OFFLINE
-                                        </span>
+                                    {isOffline && !player.isBot && (
+                                        <div className="flex items-center">
+                                            <span className="text-[10px] text-orange-400 font-extrabold uppercase tracking-wider">
+                                                OFFLINE
+                                            </span>
+                                            <OfflineTimer lastSeen={player.lastSeen} />
+                                        </div>
                                     )}
                                 </div>
                             </div>

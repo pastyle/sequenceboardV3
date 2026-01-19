@@ -136,20 +136,34 @@ function gameReducer(state: GameState, action: Action): GameState {
             const { game } = action;
 
             // Use turnOrder as top-level source of truth for player sequence
-            const playerUids = game.turnOrder || Object.keys(game.players).sort();
+            // Filter to only include UIDs that still have player data (handles disconnected/removed players)
+            const playerUids = (game.turnOrder || Object.keys(game.players).sort())
+                .filter(uid => game.players[uid]); // Critical: only process players that still exist
 
-            const newPlayers: Player[] = playerUids.map((uid, index) => {
-                const fsPlayer = game.players[uid];
-                return {
-                    id: index + 1,
-                    name: fsPlayer.name,
-                    team: (fsPlayer.color || (index % 2 === 0 ? 'red' : 'blue')) as Team,
-                    hand: fsPlayer.hand || [],
-                    uid: uid,
-                    isHost: fsPlayer.isHost,
-                    connectionStatus: fsPlayer.status
-                };
-            });
+            const newPlayers: Player[] = playerUids
+                .map((uid, index) => {
+                    const fsPlayer = game.players[uid];
+
+                    // At this point fsPlayer should always exist due to filter above,
+                    // but keeping safety check for extra protection
+                    if (!fsPlayer || !fsPlayer.name) {
+                        console.error(`[GAME STATE] Player ${uid} missing after filter - this should not happen`);
+                        throw new Error(`Critical: Player ${uid} missing from game data`);
+                    }
+
+                    return {
+                        id: index + 1,
+                        name: fsPlayer.name,
+                        team: (fsPlayer.color || (index % 2 === 0 ? 'red' : 'blue')) as Team,
+                        hand: fsPlayer.hand || [],
+                        uid: uid,
+                        isHost: fsPlayer.isHost,
+                        connectionStatus: fsPlayer.status,
+                        isBot: fsPlayer.isBot,
+                        lastSeen: fsPlayer.lastSeen
+                    };
+                });
+
 
             const newBoard = createInitialBoard();
             game.board.forEach((row, r) => {
@@ -161,15 +175,23 @@ function gameReducer(state: GameState, action: Action): GameState {
                 });
             });
 
-            const currentTurnIndex = playerUids.indexOf(game.currentTurn);
             const teamColorMap: Record<number, Team> = { 1: 'red', 2: 'blue', 3: 'green' };
+
+            // Find current player - with safety check
+            const currentTurnUid = game.currentTurn;
+            const currentPlayerIndex = newPlayers.findIndex(p => p.uid === currentTurnUid);
+
+            if (currentPlayerIndex === -1) {
+                console.warn(`[GAME STATE] Current turn player ${currentTurnUid} not found in players list`);
+                // Could happen if current player just disconnected - game will update on next snapshot
+            }
 
             return {
                 ...state,
                 players: newPlayers,
                 deck: game.deck,
                 board: newBoard,
-                currentPlayerIndex: currentTurnIndex !== -1 ? currentTurnIndex : 0,
+                currentPlayerIndex: currentPlayerIndex !== -1 ? currentPlayerIndex : 0,
                 winner: game.winnerTeam ? teamColorMap[game.winnerTeam] : null,
             };
         }
@@ -187,41 +209,153 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
     const [state, dispatch] = useReducer(gameReducer, null, createInitialState);
     const [turnError, setTurnError] = useState<string | null>(null);
 
-    // Monitor Players (Host Only)
+    // Monitor Players & Bot Logic (Any Online Player)
+    // Note: Changed from host-only to allow any player to monitor
+    // This ensures bot system works even if host disconnects
     useEffect(() => {
         if (!game || !currentUserUid) return;
 
         const myPlayer = game.players[currentUserUid];
-        if (!myPlayer?.isHost) return;
 
-        const intervalId = setInterval(() => {
+        console.log('[BOT MONITOR] Starting bot monitor', {
+            hasGame: !!game,
+            myUid: currentUserUid,
+            myName: myPlayer?.name,
+            playerCount: Object.keys(game.players).length
+        });
+
+        if (!myPlayer) {
+            console.log('[BOT MONITOR] My player data not found, skipping');
+            return;
+        }
+
+        const intervalId = setInterval(async () => {
             const now = Date.now();
+            const { setPlayerOffline, removePlayer, setPlayerBot, makeMove } = await import('../services/game');
+            const { calculateBotMove } = await import('../game/bot');
+
+            console.log('[BOT MONITOR] Checking players...', {
+                myUid: currentUserUid,
+                playerCount: Object.keys(game.players).length,
+                currentTurn: game.currentTurn
+            });
+
+            // 1. Manage Player Status (Offline/Removal/Bot Activation)
             Object.values(game.players).forEach(async (player) => {
-                if (player.uid === currentUserUid) return; // Don't check self
+                if (player.uid === currentUserUid) return; // Don't manage self
 
-                // Skip if we don't have a lastSeen yet (recently joined)
-                if (!player.lastSeen) return;
+                const timeSinceLastSeen = player.lastSeen ? now - player.lastSeen : 0;
 
-                const timeSinceLastSeen = now - player.lastSeen;
+                console.log(`[BOT MONITOR] Player ${player.name}:`, {
+                    status: player.status,
+                    isBot: player.isBot,
+                    lastSeen: player.lastSeen,
+                    timeSinceLastSeen: Math.round(timeSinceLastSeen / 1000) + 's'
+                });
 
-                // 1. Mark offline if > 15s and currently online
-                if (timeSinceLastSeen > OFFLINE_THRESHOLD_MS && player.status === 'online') {
-                    // Import dynamically to avoid circular deps if needed, though useGameState is higher level usually
-                    try {
-                        const { setPlayerOffline } = await import('../services/game');
-                        await setPlayerOffline(game.roomId, player.uid);
-                    } catch (e) { console.error("Error setting offline", e) }
+                // Status & Removal Logic
+                if (player.lastSeen) {
+                    if (timeSinceLastSeen > OFFLINE_THRESHOLD_MS && player.status === 'online') {
+                        await setPlayerOffline(game.roomId, player.uid).catch(console.error);
+                    }
+                    if (timeSinceLastSeen > REMOVE_THRESHOLD_MS) {
+                        await removePlayer(game.roomId, player.uid).catch(console.error);
+                        return; // Removed, stop processing
+                    }
                 }
 
-                // 2. Remove if > 60s
-                if (timeSinceLastSeen > REMOVE_THRESHOLD_MS) {
-                    try {
-                        const { removePlayer } = await import('../services/game');
-                        await removePlayer(game.roomId, player.uid);
-                    } catch (e) { console.error("Error removing player", e) }
+                // Bot Activation Logic:
+                // Rule 1: User specified "Timer until Bot enters".
+                // We activate Bot if player is Offline for > 30s.
+
+                // If Offline > 30s -> Activate Bot 
+                if (player.status === 'offline' && timeSinceLastSeen > 30000 && !player.isBot) {
+                    console.log(`Player ${player.name} offline for too long (${Math.round(timeSinceLastSeen / 1000)}s). Activating Bot.`);
+                    await setPlayerBot(game.roomId, player.uid, true).catch(console.error);
+                }
+
+                // Fallback: If it's their turn and they timed out (45s) even if online (AFK)
+                const isTurn = game.currentTurn === player.uid;
+                const turnDuration = game.turnStartedAt ? now - game.turnStartedAt : 0;
+
+                if (isTurn && turnDuration > 45000 && !player.isBot) {
+                    // AFK Protection
+                    console.log(`Player ${player.name} turn timeout. Activating Bot.`);
+                    await setPlayerBot(game.roomId, player.uid, true).catch(console.error);
+                }
+
+                // Deactivate Bot if Online
+                if (player.isBot && player.status === 'online') {
+                    console.log(`Player ${player.name} reconnected. Deactivating Bot.`);
+                    await setPlayerBot(game.roomId, player.uid, false).catch(console.error);
                 }
             });
-        }, 5000);
+
+            // 2. Execute Bot Turn
+            const currentPlayer = game.players[game.currentTurn];
+            if (currentPlayer && currentPlayer.isBot) {
+                // Ensure we don't spam moves. Wait a bit after turn start.
+                const turnDuration = game.turnStartedAt ? now - game.turnStartedAt : 0;
+
+                // Only execute if: waited 2s, still within reasonable time, and still their turn
+                if (turnDuration > 2000 && turnDuration < 60000) {
+                    // Double-check it's still this player's turn (prevent race conditions)
+                    if (game.currentTurn !== currentPlayer.uid) {
+                        console.log('[BOT] Turn changed, skipping move execution');
+                        return;
+                    }
+
+                    if (!currentPlayer.hand) {
+                        console.log('[BOT] No hand data, skipping');
+                        return;
+                    }
+
+                    // Reconstruct local state for bot (lightweight)
+                    const boardState = game.board.map(row => row.map(cell => ({
+                        owner: (cell && (cell === 'red' || cell === 'blue' || cell === 'green')) ? (cell === 'red' ? 1 : cell === 'blue' ? 2 : 3) : undefined,
+                        // ignoring other props for bot
+                    })));
+
+                    // Simple mapping hack for Bot Calculator
+                    // GameState type might be complex. simplify bot input?
+                    // Let's pass the raw board from FirestoreGame if bot supports it? 
+                    // Bot expects BoardState which has objects.
+                    // Let's map it.
+                    // (TODO: Ensure BoardState type matches)
+
+                    // Helper to get Team ID from string
+                    const getTeam = (c: string) => c === 'red' ? 1 : c === 'blue' ? 2 : 3;
+                    const mappedBoard = game.board.map(r => r.map(c => ({
+                        owner: c ? getTeam(c) : undefined,
+                        isSequence: false // Bot doesn't strictly need this for move calc usually
+                    })));
+
+                    const botPlayer = {
+                        id: 0,
+                        name: currentPlayer.name,
+                        team: getTeam(currentPlayer.color || 'red'),
+                        hand: currentPlayer.hand,
+                        uid: currentPlayer.uid
+                    };
+
+                    const move = calculateBotMove(mappedBoard as any, botPlayer as any, []); // allPlayers ignored for now
+
+                    if (move) {
+                        console.log("Bot playing move:", move);
+                        await makeMove(
+                            game.roomId,
+                            currentPlayer.uid,
+                            move.row,
+                            move.col,
+                            currentPlayer.color || 'red',
+                            move.card,
+                            move.moveType
+                        ).catch(console.error);
+                    }
+                }
+            }
+
+        }, 1000);
 
         return () => clearInterval(intervalId);
 

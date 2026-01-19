@@ -178,6 +178,7 @@ export const startGame = async (roomId: string): Promise<void> => {
     updates['status'] = 'playing';
     updates['turnOrder'] = turnOrder;
     updates['currentTurn'] = turnOrder[0];
+    updates['turnStartedAt'] = Date.now();
     updates['board'] = Array(100).fill('');
     updates['winnerTeam'] = deleteField();
 
@@ -299,6 +300,7 @@ export const makeMove = async (
         deck: newDeck,
         [`players.${playerUid}.hand`]: playerHand,
         currentTurn: nextPlayerUid,
+        turnStartedAt: Date.now(),
         lastMove: {
             playerId: playerUid,
             card: cardUsed,
@@ -360,3 +362,10 @@ export const removePlayer = async (roomId: string, playerUid: string): Promise<v
 
 
 
+
+export const setPlayerBot = async (roomId: string, playerUid: string, isBot: boolean): Promise<void> => {
+    const gameRef = doc(db, GAMES_COLLECTION, roomId);
+    await updateDoc(gameRef, {
+        [`players.${playerUid}.isBot`]: isBot
+    });
+};

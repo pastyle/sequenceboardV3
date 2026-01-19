@@ -14,6 +14,7 @@ export interface FirestorePlayer {
     lastSeen: number; // Timestamp for heartbeat
     hand?: string[]; // Array of card IDs
     team?: number; // 1 or 2 (or 3)
+    isBot?: boolean; // If true, Bot is playing
 }
 
 export interface Room {
@@ -31,6 +32,7 @@ export interface FirestoreGame {
     board: BoardMatrix;
     currentTurn: string; // UID of current player
     turnOrder: string[]; // List of UIDs defining the turn sequence
+    turnStartedAt?: number; // Timestamp when current turn started
     deck: string[]; // Remaining cards in deck
     lastMove?: {
         playerId: string;

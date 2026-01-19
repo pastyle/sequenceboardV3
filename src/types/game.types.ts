@@ -10,6 +10,8 @@ export interface Player {
     uid?: string;
     isHost?: boolean;
     connectionStatus?: 'online' | 'offline';
+    isBot?: boolean;
+    lastSeen?: number;
 }
 
 export interface CellPosition {

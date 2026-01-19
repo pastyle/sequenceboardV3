@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { useGameState } from './hooks/useGameState';
 import { Board } from './components/Board';
@@ -41,6 +41,33 @@ const GameRoute = () => {
 
   // Game UI Logic
   const { state, handleCardClick, handleBoardClick, resetGame, setupWinScenario, turnError, localPlayer, isMyTurn } = useGameState(game, user?.uid);
+
+  // Toast Logic
+  const [toastMessage, setToastMessage] = useState<{ msg: string, type: 'info' | 'error' } | null>(null);
+  const prevPlayersRef = useRef<Record<string, any>>({});
+
+  useEffect(() => {
+    if (!state?.players) return;
+
+    Object.values(state.players).forEach((p: any) => {
+      const prev = prevPlayersRef.current[p.uid];
+      // Check if went offline
+      if (prev && prev.connectionStatus === 'online' && p.connectionStatus === 'offline') {
+        // Only notify if we knew this player before (avoid init noise)
+        setToastMessage({ msg: `${p.name} desconectou. O BOT assumirá em breve.`, type: 'error' });
+        setTimeout(() => setToastMessage(null), 5000);
+      }
+      // Check if came online
+      if (prev && prev.connectionStatus === 'offline' && p.connectionStatus === 'online') {
+        const wasBot = prev.isBot;
+        // If it was a bot and now user is back
+        const msg = wasBot ? `${p.name} reconectou! Bot desativado.` : `${p.name} reconectou!`;
+        setToastMessage({ msg, type: 'info' });
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    });
+    prevPlayersRef.current = state.players;
+  }, [state?.players]);
 
   if (authLoading || gameLoading) {
     return <div className="min-h-screen bg-bg-dark text-white flex items-center justify-center">Loading...</div>;
@@ -105,6 +132,14 @@ const GameRoute = () => {
       {turnError && (
         <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-8 py-4 rounded-lg shadow-2xl font-bold text-xl animate-bounce">
           {turnError}
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-xl z-[200] font-bold text-white animate-in slide-in-from-top-4 fade-in ${toastMessage.type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+          }`}>
+          {toastMessage.msg}
         </div>
       )}
 
