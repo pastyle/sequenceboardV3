@@ -5,6 +5,7 @@ import { createDeck } from '../game/deck';
 import { BOARD_MATRIX, CARDS_PER_PLAYER } from '../game/constants';
 import { isValidMove } from '../game/rules';
 import { checkWin } from '../game/sequence';
+import { hasAnyValidMove } from '../utils/move-detection';
 
 const INITIAL_PLAYERS: Player[] = [
     { id: 1, name: 'Player 1', team: 'red', hand: [] },
@@ -196,6 +197,9 @@ function gameReducer(state: GameState, action: Action): GameState {
                 board: newBoard,
                 currentPlayerIndex: currentPlayerIndex !== -1 ? currentPlayerIndex : 0,
                 winner: game.winnerTeam ? teamColorMap[game.winnerTeam] : null,
+                winningCells: game.winningSequence
+                    ? game.winningSequence.map(cell => ({ row: cell.r, col: cell.c }))
+                    : []
             };
         }
 
@@ -297,6 +301,12 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
             // 2. Execute Bot Turn
             const currentPlayer = game.players[game.currentTurn];
             if (currentPlayer && currentPlayer.isBot) {
+                // Don't play if game ended
+                if (game.status === 'finished' || game.winnerTeam) {
+                    console.log('[BOT] Game finished, stopping bot');
+                    return;
+                }
+
                 // Ensure we don't spam moves. Wait a bit after turn start.
                 const turnDuration = game.turnStartedAt ? now - game.turnStartedAt : 0;
 
@@ -329,10 +339,60 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
                         uid: currentPlayer.uid
                     };
 
-                    const move = calculateBotMove(mappedBoard as any, botPlayer as any, []); // allPlayers ignored for now
+                    const move = calculateBotMove(mappedBoard as any, botPlayer as any, []);
 
                     if (move) {
                         console.log("Bot playing move:", move);
+
+                        // Check if this move creates a winning sequence
+                        let winnerTeam: number | undefined = undefined;
+
+                        // Simulate the move on the board to check for win
+                        const testBoard = game.board.map((row, r) =>
+                            row.map((cell, c) => {
+                                if (r === move.row && c === move.col) {
+                                    return move.moveType === 'place'
+                                        ? (currentPlayer.color || 'red')
+                                        : '';
+                                }
+                                return cell;
+                            })
+                        );
+
+                        // Import and use checkWin
+                        const { checkWin: checkWinFn } = await import('../game/sequence');
+                        const testBoardState = testBoard.map(row =>
+                            row.map(cell => ({
+                                card: '',
+                                owner: cell === '' ? null : (cell as Team),
+                                isLocked: false
+                            }))
+                        );
+
+                        const botTeam = (currentPlayer.color || 'red') as Team;
+
+                        // Add validation logging
+                        console.log('[BOT WIN CHECK]', {
+                            move: { row: move.row, col: move.col },
+                            moveType: move.moveType,
+                            botTeam,
+                            cellAfterMove: testBoard[move.row]?.[move.col],
+                            actualBefore: game.board[move.row]?.[move.col]
+                        });
+
+                        const winResult = checkWinFn(
+                            testBoardState,
+                            { row: move.row, col: move.col },
+                            botTeam
+                        );
+
+                        if (winResult.isWin) {
+                            // Convert team color to number (1=red, 2=blue, 3=green)
+                            winnerTeam = botTeam === 'red' ? 1 :
+                                botTeam === 'blue' ? 2 : 3;
+                            console.log(`[BOT] Bot won! Team: ${botTeam}`);
+                        }
+
                         await makeMove(
                             game.roomId,
                             currentPlayer.uid,
@@ -340,12 +400,19 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
                             move.col,
                             currentPlayer.color || 'red',
                             move.card,
-                            move.moveType
+                            move.moveType,
+                            winnerTeam,
+                            winResult.isWin ? winResult.sequence : undefined
                         ).catch(console.error);
                     }
                 }
             }
-
+            const playerUids = Object.keys(game.players);
+            const hasHost = playerUids.some(uid => game.players[uid]?.isHost);
+            if (!hasHost && playerUids.length > 0) {
+                const { promoteNewHost } = await import('../services/game');
+                await promoteNewHost(game.roomId);
+            }
         }, 1000);
 
         return () => clearInterval(intervalId);
@@ -376,7 +443,12 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
     }, [state.winner, isMyTurn]);
 
     const handleBoardClick = useCallback(async (row: number, col: number) => {
-        if (state.winner) return;
+        // Block if game is finished
+        if (game?.status === 'finished' || game?.winnerTeam || state.winner) {
+            console.log('[MOVE] Game already finished, move blocked');
+            return;
+        }
+
         if (!isMyTurn()) {
             setTurnError('NÃO É A SUA VEZ');
             setTimeout(() => setTurnError(null), 2000);
@@ -421,7 +493,8 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
                         currentPlayer.team,
                         selectedCard,
                         'place',
-                        winResult.isWin ? teamNumberMap[currentPlayer.team] : undefined
+                        winResult.isWin ? teamNumberMap[currentPlayer.team] : undefined,
+                        winResult.isWin ? winResult.sequence : undefined
                     );
 
                     if (winResult.isWin) {
@@ -449,6 +522,9 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
     }, [state.winner, state.selectedCardIndex, state.players, state.board, state.currentPlayerIndex, isMyTurn, game, currentUserUid, dispatch]);
 
     const resetGame = useCallback(async () => {
+        // Clear local UI state immediately (winning sequences, etc.)
+        dispatch({ type: 'RESET_GAME' });
+
         if (game?.roomId) {
             try {
                 const { startGame } = await import('../services/game');
@@ -463,12 +539,41 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
         dispatch({ type: 'SETUP_WIN_SCENARIO' });
     }, []);
 
+    // Handle discard action (when player has no valid moves)
+    const handleDiscard = useCallback(async () => {
+        if (!isMyTurn() || !game?.roomId || !currentUserUid) return;
+
+        const localPlayer = state.players.find(p => p.uid === currentUserUid);
+        if (!localPlayer || state.selectedCardIndex < 0) {
+            console.log('[DISCARD] No card selected');
+            return;
+        }
+
+        const cardToDiscard = localPlayer.hand[state.selectedCardIndex];
+
+        try {
+            const { discardCard } = await import('../services/game');
+            await discardCard(game.roomId, currentUserUid, cardToDiscard);
+            console.log('[DISCARD] Card discarded:', cardToDiscard);
+        } catch (err) {
+            console.error('[DISCARD] Failed:', err);
+        }
+    }, [game?.roomId, currentUserUid, state.selectedCardIndex, state.players, isMyTurn]);
+
+    // Check if player can discard (has no valid moves)
     const localPlayer = state.players.find(p => p.uid === currentUserUid);
+    let canDiscard = false;
+
+    if (isMyTurn() && localPlayer && game?.status === 'playing') {
+        canDiscard = !hasAnyValidMove(localPlayer, state.board);
+    }
 
     return {
         state,
         handleCardClick,
         handleBoardClick,
+        handleDiscard,
+        canDiscard,
         resetGame,
         setupWinScenario,
         turnError,

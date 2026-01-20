@@ -34,11 +34,13 @@ export interface FirestoreGame {
     turnOrder: string[]; // List of UIDs defining the turn sequence
     turnStartedAt?: number; // Timestamp when current turn started
     deck: string[]; // Remaining cards in deck
+    discardPile: string[]; // Cards that have been played/discarded
     lastMove?: {
         playerId: string;
         card: string;
         position: { r: number; c: number };
     };
     winnerTeam?: number;
+    winningSequence?: Array<{ r: number; c: number }>;
     createdAt: number;
 }

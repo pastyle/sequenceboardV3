@@ -16,9 +16,8 @@ export function isValidMove(
     const isCornerJoker = cellCardValue === 'Joker';
 
     if (cardInfo.type === 'one-eyed') {
-        // Remove opponent marker
-        const opponentTeam = playerTeam === 'red' ? 'blue' : 'red';
-        if (isOccupied && targetCell.owner === opponentTeam) {
+        // Remove ANY opponent marker (not own team, and not empty)
+        if (isOccupied && targetCell.owner !== playerTeam) {
             // One-eyed jacks can remove from any cell (unless locked - TODO: locking)
             return { isValid: true, type: 'remove' };
         }

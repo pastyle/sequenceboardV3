@@ -10,6 +10,7 @@ import { useGameConnection } from './hooks/useGameConnection';
 import { LobbyScreen } from './components/lobby/LobbyScreen';
 import { WaitingRoom } from './components/lobby/WaitingRoom';
 import { TurnNotification } from './ui/TurnNotification';
+import { TurnTimer } from './components/TurnTimer';
 
 // Game Route Wrapper to handle logic
 const GameRoute = () => {
@@ -40,7 +41,7 @@ const GameRoute = () => {
   }, [code, game, gameLoading, error, navigate, user]);
 
   // Game UI Logic
-  const { state, handleCardClick, handleBoardClick, resetGame, setupWinScenario, turnError, localPlayer, isMyTurn } = useGameState(game, user?.uid);
+  const { state, handleCardClick, handleBoardClick, handleDiscard, canDiscard, resetGame, setupWinScenario, turnError, localPlayer, isMyTurn } = useGameState(game, user?.uid);
 
   // Toast Logic
   const [toastMessage, setToastMessage] = useState<{ msg: string, type: 'info' | 'error' } | null>(null);
@@ -155,6 +156,15 @@ const GameRoute = () => {
         onRestart={resetGame}
       />
 
+      {/* Turn Timer - shows in last 5 seconds */}
+      {game && (
+        <TurnTimer
+          turnStartedAt={game.turnStartedAt || Date.now()}
+          turnTimeLimit={30}
+          isMyTurn={isMyTurn}
+        />
+      )}
+
       <main className="flex flex-1 overflow-hidden relative">
         <PlayerList
           players={state.players}
@@ -178,6 +188,8 @@ const GameRoute = () => {
             hand={localPlayer.hand}
             selectedCardIndex={state.selectedCardIndex}
             onCardClick={handleCardClick}
+            canDiscard={canDiscard}
+            onDiscard={handleDiscard}
           />
         )}
       </main>

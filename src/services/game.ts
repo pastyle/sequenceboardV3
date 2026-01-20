@@ -15,6 +15,16 @@ import type { FirestoreGame, GameStatus, FirestorePlayer } from '../types/fireba
 
 const GAMES_COLLECTION = 'games';
 
+// Helper: Shuffle array (Fisher-Yates algorithm)
+function shuffleArray<T>(array: T[]): T[] {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
 // Helper to generate a 6-character room code
 export const generateRoomCode = (): string => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -175,6 +185,7 @@ export const startGame = async (roomId: string): Promise<void> => {
     });
 
     updates['deck'] = deck;
+    updates['discardPile'] = []; // Initialize empty discard pile
     updates['status'] = 'playing';
     updates['turnOrder'] = turnOrder;
     updates['currentTurn'] = turnOrder[0];
@@ -256,7 +267,8 @@ export const makeMove = async (
     team: string,
     cardUsed: string,
     moveType: 'place' | 'remove',
-    winnerTeam?: number
+    winnerTeam?: number,
+    winningSequence?: Array<{ row: number; col: number }>
 ): Promise<void> => {
     const gameRef = doc(db, GAMES_COLLECTION, roomId);
     const gameSnap = await getDoc(gameRef);
@@ -283,11 +295,28 @@ export const makeMove = async (
         playerHand.splice(cardIndex, 1);
     }
 
-    // Draw new card from deck
-    const newDeck = [...gameData.deck];
+    // Smart card drawing with discard pile reshuffling
+    let newDeck = [...gameData.deck];
+    let newDiscardPile = [...(gameData.discardPile || [])];
+
+    // Add used card to discard pile
+    newDiscardPile.push(cardUsed);
+
+    // Draw new card - reshuffle discard pile if main deck is empty
     if (newDeck.length > 0) {
+        // Main deck has cards, draw from it
         playerHand.push(newDeck.pop()!);
+    } else if (newDiscardPile.length > 0) {
+        // Main deck empty! Reshuffle discard pile
+        console.log('[DECK] Main deck empty, reshuffling discard pile with', newDiscardPile.length, 'cards');
+        newDeck = shuffleArray(newDiscardPile);
+        newDiscardPile = [];
+
+        if (newDeck.length > 0) {
+            playerHand.push(newDeck.pop()!);
+        }
     }
+    // If both decks empty, player continues with current hand (stalemate check happens elsewhere)
 
     // Get next player from turnOrder
     const turnOrder = gameData.turnOrder || Object.keys(gameData.players).sort();
@@ -298,6 +327,7 @@ export const makeMove = async (
     const updates: any = {
         board: flatBoard,
         deck: newDeck,
+        discardPile: newDiscardPile,
         [`players.${playerUid}.hand`]: playerHand,
         currentTurn: nextPlayerUid,
         turnStartedAt: Date.now(),
@@ -311,6 +341,11 @@ export const makeMove = async (
     if (winnerTeam) {
         updates.winnerTeam = winnerTeam;
         updates.status = 'finished';
+
+        // Store winning sequence so all players can see it
+        if (winningSequence) {
+            updates.winningSequence = winningSequence.map(cell => ({ r: cell.row, c: cell.col }));
+        }
     }
 
     // Update Firestore
@@ -327,7 +362,8 @@ export const subscribeToGame = (roomId: string, callback: (game: FirestoreGame |
             const game: FirestoreGame = {
                 id: doc.id,
                 ...data,
-                board: board
+                board: board,
+                discardPile: data.discardPile || [] // Default to empty for existing games
             } as FirestoreGame;
 
             callback(game);
@@ -368,4 +404,78 @@ export const setPlayerBot = async (roomId: string, playerUid: string, isBot: boo
     await updateDoc(gameRef, {
         [`players.${playerUid}.isBot`]: isBot
     });
+};
+
+export const discardCard = async (
+    roomId: string,
+    playerUid: string,
+    cardToDiscard: string
+): Promise<void> => {
+    const gameRef = doc(db, GAMES_COLLECTION, roomId);
+    const gameSnap = await getDoc(gameRef);
+
+    if (!gameSnap.exists()) throw new Error('Game not found');
+
+    const gameData = gameSnap.data() as FirestoreGame;
+
+    // Remove card from hand
+    const playerHand = [...(gameData.players[playerUid].hand || [])];
+    const cardIndex = playerHand.indexOf(cardToDiscard);
+    if (cardIndex > -1) {
+        playerHand.splice(cardIndex, 1);
+    }
+
+    // Smart card drawing with discard pile reshuffling (same logic as makeMove)
+    let newDeck = [...gameData.deck];
+    let newDiscardPile = [...(gameData.discardPile || [])];
+    newDiscardPile.push(cardToDiscard);
+
+    // Draw replacement card
+    if (newDeck.length > 0) {
+        playerHand.push(newDeck.pop()!);
+    } else if (newDiscardPile.length > 0) {
+        console.log('[DISCARD] Main deck empty, reshuffling discard pile');
+        newDeck = shuffleArray(newDiscardPile);
+        newDiscardPile = [];
+        if (newDeck.length > 0) {
+            playerHand.push(newDeck.pop()!);
+        }
+    }
+
+    // Advance turn to next player
+    const turnOrder = gameData.turnOrder || Object.keys(gameData.players);
+    const currentIndex = turnOrder.indexOf(playerUid);
+    const nextIndex = (currentIndex + 1) % turnOrder.length;
+
+    await updateDoc(gameRef, {
+        deck: newDeck,
+        discardPile: newDiscardPile,
+        [`players.${playerUid}.hand`]: playerHand,
+        currentTurn: turnOrder[nextIndex],
+        turnStartedAt: Date.now()
+    });
+};
+
+export const promoteNewHost = async (roomId: string): Promise<void> => {
+    const gameRef = doc(db, GAMES_COLLECTION, roomId);
+    const gameSnap = await getDoc(gameRef);
+
+    if (!gameSnap.exists()) return;
+
+    const gameData = gameSnap.data() as FirestoreGame;
+    const playerUids = Object.keys(gameData.players);
+
+    // Check if we even have a host
+    const currentHost = playerUids.find(uid => gameData.players[uid].isHost);
+
+    if (!currentHost && playerUids.length > 0) {
+        // No host! Promote first player in turnOrder or first available
+        const newHostUid = gameData.turnOrder?.[0] || playerUids[0];
+
+        console.log(`[HOST MIGRATION] Promoting ${gameData.players[newHostUid]?.name} to host`);
+
+        await updateDoc(gameRef, {
+            [`players.${newHostUid}.isHost`]: true
+        });
+    }
 };

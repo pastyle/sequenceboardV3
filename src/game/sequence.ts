@@ -58,8 +58,12 @@ function isTeamOrCorner(r: number, c: number, team: Team, boardState: BoardState
     const cell = boardState[r][c];
     if (!cell) return false; // Should not happen with valid bounds
 
-    // Corners count for everyone
-    if (isCorner) return true;
+    // CRITICAL FIX: Corners only count if they have a piece placed
+    // Empty corners are NOT wild for sequences
+    if (isCorner) {
+        // Corner must have a piece from the team to count
+        return cell.owner === team;
+    }
 
     // Must match team exactly
     return cell.owner === team;
