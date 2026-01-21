@@ -168,16 +168,30 @@ function gameReducer(state: GameState, action: Action): GameState {
 
 
 
-
             const newBoard = createInitialBoard();
-            game.board.forEach((row, r) => {
-                row.forEach((cell, c) => {
-                    const marker = cell as Team | '';
+            // Handle both flat and 2D board formats
+            if (Array.isArray(game.board[0])) {
+                // It's a 2D array
+                (game.board as string[][]).forEach((row, r) => {
+                    row.forEach((cell, c) => {
+                        const marker = cell as Team | '';
+                        if (marker) {
+                            newBoard[r][c].owner = marker;
+                        }
+                    });
+                });
+            } else {
+                // It's a flat array
+                (game.board as (string | number)[]).forEach((cell, flatIndex) => {
+                    const r = Math.floor(flatIndex / 10);
+                    const c = flatIndex % 10;
+                    const marker = String(cell) as Team | '';
                     if (marker) {
                         newBoard[r][c].owner = marker;
                     }
                 });
-            });
+            }
+
 
             const teamColorMap: Record<number, Team> = { 1: 'red', 2: 'blue', 3: 'green' };
 
@@ -196,7 +210,9 @@ function gameReducer(state: GameState, action: Action): GameState {
                 deck: game.deck,
                 board: newBoard,
                 currentPlayerIndex: currentPlayerIndex !== -1 ? currentPlayerIndex : 0,
-                winner: game.winnerTeam ? teamColorMap[game.winnerTeam] : null,
+                winner: game.winnerTeam
+                    ? (typeof game.winnerTeam === 'number' ? teamColorMap[game.winnerTeam] : game.winnerTeam as Team)
+                    : null,
                 winningCells: game.winningSequence
                     ? game.winningSequence.map(cell => ({ row: cell.r, col: cell.c }))
                     : []
@@ -299,7 +315,7 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
             });
 
             // 2. Execute Bot Turn
-            const currentPlayer = game.players[game.currentTurn];
+            const currentPlayer = game.currentTurn ? game.players[game.currentTurn] : undefined;
             if (currentPlayer && currentPlayer.isBot) {
                 // Don't play if game ended
                 if (game.status === 'finished' || game.winnerTeam) {
@@ -326,7 +342,10 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
 
                     // Map board to Bot format
                     const getTeam = (c: string) => c === 'red' ? 1 : c === 'blue' ? 2 : 3;
-                    const mappedBoard = game.board.map(r => r.map(c => ({
+                    const board2D: string[][] = Array.isArray(game.board[0])
+                        ? (game.board as string[][])
+                        : [];  // Convert flat to 2D if needed (bot needs 2D)
+                    const mappedBoard = board2D.map(r => r.map((c: string) => ({
                         owner: c ? getTeam(c) : undefined,
                         isSequence: false
                     })));
@@ -348,8 +367,8 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
                         let winnerTeam: number | undefined = undefined;
 
                         // Simulate the move on the board to check for win
-                        const testBoard = game.board.map((row, r) =>
-                            row.map((cell, c) => {
+                        const testBoard = board2D.map((row: string[], r: number) =>
+                            row.map((cell: string, c: number) => {
                                 if (r === move.row && c === move.col) {
                                     return move.moveType === 'place'
                                         ? (currentPlayer.color || 'red')
@@ -361,8 +380,8 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
 
                         // Import and use checkWin
                         const { checkWin: checkWinFn } = await import('../game/sequence');
-                        const testBoardState = testBoard.map(row =>
-                            row.map(cell => ({
+                        const testBoardState = testBoard.map((row: string[]) =>
+                            row.map((cell: string) => ({
                                 card: '',
                                 owner: cell === '' ? null : (cell as Team),
                                 isLocked: false
@@ -377,7 +396,7 @@ export function useGameState(game?: FirestoreGame | null, currentUserUid?: strin
                             moveType: move.moveType,
                             botTeam,
                             cellAfterMove: testBoard[move.row]?.[move.col],
-                            actualBefore: game.board[move.row]?.[move.col]
+                            actualBefore: board2D[move.row]?.[move.col]
                         });
 
                         const winResult = checkWinFn(

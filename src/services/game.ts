@@ -304,8 +304,10 @@ export const makeMove = async (
 
     const gameData = gameSnap.data() as FirestoreGame;
 
-    // Convert board to flat for update
-    const flatBoard = boardToFlat(gameData.board);
+    // Convert board to flat for update (handle both formats)
+    const flatBoard: string[] = Array.isArray(gameData.board[0])
+        ? boardToFlat(gameData.board as unknown as string[][])
+        : (gameData.board as (string | number)[]).map(String);
     const flatIndex = row * 10 + col;
 
     // Update board cell
@@ -387,14 +389,12 @@ export const subscribeToGame = (roomId: string, callback: (game: FirestoreGame |
             // Convert flat board to 2D
             const board = Array.isArray(data.board) ? flatToBoard(data.board) : [];
 
-            const game: FirestoreGame = {
+            callback({
+                ...data as FirestoreGame,
                 id: doc.id,
-                ...data,
                 board: board,
-                discardPile: data.discardPile || [] // Default to empty for existing games
-            } as FirestoreGame;
-
-            callback(game);
+                discardPile: data.discardPile || []
+            });
         } else {
             callback(null);
         }
@@ -525,11 +525,11 @@ export const listActiveGames = (callback: (games: FirestoreGame[]) => void) => {
             const board = Array.isArray(data.board) ? flatToBoard(data.board) : [];
 
             games.push({
+                ...data as FirestoreGame,
                 id: docSnap.id,
-                ...data,
                 board: board,
                 discardPile: data.discardPile || []
-            } as FirestoreGame);
+            });
         });
 
         // Client-side sort: Newest first

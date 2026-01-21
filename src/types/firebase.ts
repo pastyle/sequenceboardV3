@@ -20,6 +20,8 @@ export interface FirestorePlayer {
     lastSeen: number;
     team?: string;
     hand?: string[];
+    color?: string;
+    isBot?: boolean;
 }
 
 export interface Move {
@@ -40,7 +42,7 @@ export interface FirestoreGame {
     turnStartedAt?: number;
 
     // Game State
-    board: string[] | number[]; // It's usually a flat array in DB
+    board: string[] | number[] | string[][]; // Can be flat array in DB or 2D in memory
     deck: string[];
     discardPile: string[];
     currentTurn?: string; // playerUid
@@ -48,6 +50,9 @@ export interface FirestoreGame {
     winner: string | null;
     lastMove?: Move;
     winningCells?: any[];
+    turnOrder?: string[];
+    winnerTeam?: string;
+    winningSequence?: Position[];
 
     // Lobby
     isPrivate?: boolean;
