@@ -21,7 +21,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
     const players = Object.values(game.players).sort((a, b) => {
         if (a.isHost) return -1;
         if (b.isHost) return 1;
-        return a.name.localeCompare(b.name);
+        return (a.name || '').localeCompare(b.name || '');
     });
     const { t } = useLanguage();
     const isHost = game.players[currentUser?.uid || '']?.isHost;
