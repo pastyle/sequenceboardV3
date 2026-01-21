@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import type { Team } from '../types/game.types';
+import { useLanguage } from '../i18n';
 
 interface TurnNotificationProps {
     isMyTurn: boolean;
@@ -25,6 +26,7 @@ export const TurnNotification: React.FC<TurnNotificationProps> = ({
     const [showTurnBanner, setShowTurnBanner] = useState(false);
     const [hasPlayedEndSound, setHasPlayedEndSound] = useState(false);
     const turnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const { t } = useLanguage();
 
     // Effect for Turn Notification
     useEffect(() => {
@@ -88,16 +90,16 @@ export const TurnNotification: React.FC<TurnNotificationProps> = ({
             >
                 <div className="flex flex-col items-center">
                     <span className="text-4xl font-black uppercase tracking-tighter italic">
-                        {isGameOver ? 'Fim de Jogo!' : 'Sua Vez!'}
+                        {isGameOver ? t.game_gameOver : t.game_yourTurn}
                     </span>
 
                     {!isGameOver && playerName && (
-                        <span className="text-sm font-bold opacity-80 mt-1">{playerName}, é seu momento!</span>
+                        <span className="text-sm font-bold opacity-80 mt-1">{playerName}, {t.game_yourTurn}</span>
                     )}
 
                     {isGameOver && (
                         <span className="text-lg font-bold mt-2 text-clubs">
-                            {winnerText || `TIME ${winner?.toUpperCase()} VENCEU!`}
+                            {winnerText || `${t.team} ${winner?.toUpperCase()} ${t.game_won}`}
                         </span>
                     )}
                 </div>
@@ -107,7 +109,7 @@ export const TurnNotification: React.FC<TurnNotificationProps> = ({
                         onClick={onRestart}
                         className="mt-2 bg-white text-bg-dark px-8 py-3 rounded-xl font-black uppercase tracking-widest hover:scale-105 transition-transform shadow-xl active:scale-95 cursor-pointer"
                     >
-                        Reiniciar Partida
+                        {t.game_playAgain}
                     </button>
                 )}
             </div>

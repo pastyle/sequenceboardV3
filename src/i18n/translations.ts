@@ -1,0 +1,118 @@
+import type { TranslationDictionary, Language } from './types';
+
+export const translations: Record<Language, TranslationDictionary> = {
+    en: {
+        lobby_createGame: "Create New Game",
+        lobby_joinGame: "Join Existing Game",
+        lobby_enterName: "Enter your name",
+        lobby_gameId: "Game ID",
+        lobby_roomCodePlaceholder: "Room Code (6 chars)",
+        lobby_join: "Join Game",
+        lobby_joining: "Joining...",
+        lobby_create: "Create Game",
+        lobby_hosting: "Hosting Game",
+        lobby_players: "Players",
+        lobby_waiting: "Waiting for host to start...",
+        lobby_startGame: "Start Game",
+        lobby_copyLink: "Copy Invite Link",
+        lobby_previousGame: "Previous Game Found",
+        lobby_reconnect: "Reconnect to",
+
+        game_waitingFor: "Waiting for",
+        game_yourTurn: "It's your turn!",
+        game_won: "won the game!",
+        game_gameOver: "Game Over",
+        game_winner: "Winner",
+        game_playAgain: "Play Again",
+        game_loading: "Loading game...",
+
+        hand_yourHand: "Your Hand",
+        hand_discard: "Discard",
+        hand_noMoves: "No valid moves",
+        hand_timeRunningOut: "Time running out!",
+
+        board_place: "Place",
+        board_remove: "Remove",
+
+        you: "YOU",
+        team: "Team",
+        host: "HOST",
+        copy: "Copy"
+    },
+    pt: {
+        lobby_createGame: "Criar Novo Jogo",
+        lobby_joinGame: "Entrar em Jogo Existente",
+        lobby_enterName: "Digite seu nome",
+        lobby_gameId: "ID do Jogo",
+        lobby_roomCodePlaceholder: "Código da Sala (6 chars)",
+        lobby_join: "Entrar",
+        lobby_joining: "Entrando...",
+        lobby_create: "Criar Jogo",
+        lobby_hosting: "Hospedando Jogo",
+        lobby_players: "Jogadores",
+        lobby_waiting: "Aguardando anfitrião iniciar...",
+        lobby_startGame: "Iniciar Jogo",
+        lobby_copyLink: "Copiar Link de Convite",
+        lobby_previousGame: "Jogo Anterior Encontrado",
+        lobby_reconnect: "Reconectar a",
+
+        game_waitingFor: "Aguardando",
+        game_yourTurn: "É a sua vez!",
+        game_won: "venceu o jogo!",
+        game_gameOver: "Fim de Jogo",
+        game_winner: "Vencedor",
+        game_playAgain: "Jogar Novamente",
+        game_loading: "Carregando jogo...",
+
+        hand_yourHand: "Sua Mão",
+        hand_discard: "Descartar",
+        hand_noMoves: "Sem movimentos válidos",
+        hand_timeRunningOut: "Tempo acabando!",
+
+        board_place: "Colocar",
+        board_remove: "Remover",
+
+        you: "VOCÊ",
+        team: "Time",
+        host: "HOST",
+        copy: "Copiar"
+    },
+    es: {
+        lobby_createGame: "Crear Nuevo Juego",
+        lobby_joinGame: "Unirse a Juego Existente",
+        lobby_enterName: "Ingresa tu nombre",
+        lobby_gameId: "ID del Juego",
+        lobby_roomCodePlaceholder: "Código de Sala (6 chars)",
+        lobby_join: "Unirse",
+        lobby_joining: "Uniéndose...",
+        lobby_create: "Crear Juego",
+        lobby_hosting: "Hospedando Juego",
+        lobby_players: "Jugadores",
+        lobby_waiting: "Esperando al anfitrión...",
+        lobby_startGame: "Iniciar Juego",
+        lobby_copyLink: "Copiar Enlace",
+        lobby_previousGame: "Juego Anterior Encontrado",
+        lobby_reconnect: "Reconectar a",
+
+        game_waitingFor: "Esperando a",
+        game_yourTurn: "¡Es tu turno!",
+        game_won: "¡ganó el juego!",
+        game_gameOver: "Juego Terminado",
+        game_winner: "Ganador",
+        game_playAgain: "Jugar de Nuevo",
+        game_loading: "Cargando juego...",
+
+        hand_yourHand: "Tu Mano",
+        hand_discard: "Descartar",
+        hand_noMoves: "Sin movimientos válidos",
+        hand_timeRunningOut: "¡El tiempo se acaba!",
+
+        board_place: "Colocar",
+        board_remove: "Quitar",
+
+        you: "TÚ",
+        team: "Equipo",
+        host: "ANFITRIÓN",
+        copy: "Copiar"
+    }
+};

@@ -12,11 +12,12 @@ interface BoardCellProps {
     isValidTarget: boolean;
     isValidRemove: boolean;
     isWinningCell: boolean; // Part of final win sequence
+    isLastMove?: boolean;
     onClick: () => void;
 }
 
 export const BoardCell: React.FC<BoardCellProps> = ({
-    card, owner, isWinningCell, isValidTarget, isValidRemove, onClick
+    card, owner, isWinningCell, isValidTarget, isValidRemove, isLastMove, onClick
 }) => {
 
     // Helper for suit styles
@@ -54,7 +55,8 @@ export const BoardCell: React.FC<BoardCellProps> = ({
                     owner === 'red' && "bg-[radial-gradient(circle_at_30%_30%,#ff8a8d,#FF595D)]",
                     owner === 'blue' && "bg-[radial-gradient(circle_at_30%_30%,#5cb3ff,#0088FF)]",
                     owner === 'green' && "bg-[radial-gradient(circle_at_30%_30%,#66ffa3,#22c55e)]",
-                    isWinningCell && "shadow-[0_0_15px_5px_#FFD700] border-white animate-winPulse z-30"
+                    isWinningCell && "shadow-[0_0_15px_5px_#FFD700] border-white animate-winPulse z-30",
+                    isLastMove && !isWinningCell && "shadow-[0_0_10px_3px_#FFFFFF] border-[#FFF] ring-2 ring-offset-2 ring-offset-[#111] ring-[#FFF] z-20"
                 )} />
             )}
         </div>

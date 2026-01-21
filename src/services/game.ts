@@ -192,6 +192,7 @@ export const startGame = async (roomId: string): Promise<void> => {
     updates['turnStartedAt'] = Date.now();
     updates['board'] = Array(100).fill('');
     updates['winnerTeam'] = deleteField();
+    updates['winningSequence'] = deleteField();
 
     await updateDoc(gameRef, updates);
 };

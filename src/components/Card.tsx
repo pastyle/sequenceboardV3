@@ -7,10 +7,12 @@ interface CardProps {
     val: string;
     isSelected?: boolean;
     onClick?: () => void;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
     className?: string;
 }
 
-export const Card: React.FC<CardProps> = ({ val, isSelected, onClick, className }) => {
+export const Card: React.FC<CardProps> = ({ val, isSelected, onClick, onMouseEnter, onMouseLeave, className }) => {
 
     const cardInfo = useMemo(() => {
         if (!val.includes('J')) return { type: 'normal', suit: val.slice(-1) };
@@ -38,6 +40,8 @@ export const Card: React.FC<CardProps> = ({ val, isSelected, onClick, className 
             <div
                 className={twMerge(baseClasses, "bg-add-jack text-white text-4xl shadow-md", isSelected && selectedClasses, className)}
                 onClick={onClick}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
             >
                 +
             </div>
@@ -49,6 +53,8 @@ export const Card: React.FC<CardProps> = ({ val, isSelected, onClick, className 
             <div
                 className={twMerge(baseClasses, "bg-remove-jack text-white text-4xl shadow-md", isSelected && selectedClasses, className)}
                 onClick={onClick}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
             >
                 -
             </div>
@@ -59,6 +65,8 @@ export const Card: React.FC<CardProps> = ({ val, isSelected, onClick, className 
         <div
             className={twMerge(baseClasses, getSuitColorClass(cardInfo.suit!), isSelected && selectedClasses, className)}
             onClick={onClick}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
         >
             {val}
         </div>

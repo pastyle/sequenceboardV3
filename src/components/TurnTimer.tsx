@@ -1,21 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLanguage } from '../i18n';
 
 interface TurnTimerProps {
     turnStartedAt: number;
     turnTimeLimit: number; // 30 seconds
     isMyTurn: boolean;
+    gameOver?: boolean;
 }
 
 export const TurnTimer: React.FC<TurnTimerProps> = ({
-    turnStartedAt, turnTimeLimit, isMyTurn
+    turnStartedAt, turnTimeLimit, isMyTurn, gameOver
 }) => {
     const [timeRemaining, setTimeRemaining] = useState(30);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const hasPlayedRef = useRef<Set<number>>(new Set());
+    const { t } = useLanguage();
 
     useEffect(() => {
         // Reset on turn change
         hasPlayedRef.current.clear();
+
+        // Stop timer if game is over
+        if (gameOver) {
+            return;
+        }
 
         const interval = setInterval(() => {
             const elapsed = (Date.now() - turnStartedAt) / 1000;
@@ -33,7 +41,7 @@ export const TurnTimer: React.FC<TurnTimerProps> = ({
         }, 100);
 
         return () => clearInterval(interval);
-    }, [turnStartedAt, turnTimeLimit, isMyTurn]);
+    }, [turnStartedAt, turnTimeLimit, isMyTurn, gameOver]);
 
     const playBeep = () => {
         if (!audioRef.current) {
@@ -43,19 +51,25 @@ export const TurnTimer: React.FC<TurnTimerProps> = ({
         audioRef.current.play().catch(console.error);
     };
 
-    // Only show in last 5 seconds of your turn
-    if (!isMyTurn || timeRemaining > 5) return null;
+    // Don't show if not player's turn or game is over
+    if (!isMyTurn || gameOver) return null;
+
+    const isWarning = timeRemaining <= 5;
+    const seconds = Math.ceil(timeRemaining);
 
     return (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 
-                        bg-red-600 text-white px-8 py-4 rounded-lg shadow-2xl 
-                        animate-pulse">
-            <div className="text-4xl font-bold text-center">
-                {Math.ceil(timeRemaining)}
+        <div className={`w-full px-2 py-2 rounded-lg text-center transition-all ${isWarning
+            ? 'bg-red-600 animate-pulse'
+            : 'bg-gray-700'
+            }`}>
+            <div className={`font-bold ${isWarning ? 'text-2xl text-white' : 'text-sm text-gray-300'}`}>
+                {seconds}s
             </div>
-            <div className="text-sm text-center mt-1">
-                seconds remaining
-            </div>
+            {isWarning && (
+                <div className="text-xs text-white mt-1">
+                    {t.hand_timeRunningOut}
+                </div>
+            )}
         </div>
     );
 };

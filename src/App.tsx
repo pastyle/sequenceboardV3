@@ -10,7 +10,6 @@ import { useGameConnection } from './hooks/useGameConnection';
 import { LobbyScreen } from './components/lobby/LobbyScreen';
 import { WaitingRoom } from './components/lobby/WaitingRoom';
 import { TurnNotification } from './ui/TurnNotification';
-import { TurnTimer } from './components/TurnTimer';
 
 // Game Route Wrapper to handle logic
 const GameRoute = () => {
@@ -41,7 +40,8 @@ const GameRoute = () => {
   }, [code, game, gameLoading, error, navigate, user]);
 
   // Game UI Logic
-  const { state, handleCardClick, handleBoardClick, handleDiscard, canDiscard, resetGame, setupWinScenario, turnError, localPlayer, isMyTurn } = useGameState(game, user?.uid);
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const { state, handleCardClick, handleBoardClick, handleDiscard, canDiscard, resetGame, turnError, localPlayer, isMyTurn } = useGameState(game, user?.uid);
 
   // Toast Logic
   const [toastMessage, setToastMessage] = useState<{ msg: string, type: 'info' | 'error' } | null>(null);
@@ -124,7 +124,6 @@ const GameRoute = () => {
         status={statusText}
         winner={state.winner}
         onReset={resetGame}
-        onDebugWin={setupWinScenario}
         isMyTurn={isMyTurn}
         roomId={game?.roomId}
       />
@@ -156,15 +155,6 @@ const GameRoute = () => {
         onRestart={resetGame}
       />
 
-      {/* Turn Timer - shows in last 5 seconds */}
-      {game && (
-        <TurnTimer
-          turnStartedAt={game.turnStartedAt || Date.now()}
-          turnTimeLimit={30}
-          isMyTurn={isMyTurn}
-        />
-      )}
-
       <main className="flex flex-1 overflow-hidden relative">
         <PlayerList
           players={state.players}
@@ -178,6 +168,8 @@ const GameRoute = () => {
             board={state.board}
             currentPlayer={currentPlayer}
             selectedCard={localPlayer && state.selectedCardIndex !== -1 ? localPlayer.hand[state.selectedCardIndex] : null}
+            previewCard={hoveredCard}
+            lastMove={game?.lastMove}
             winningCells={state.winningCells}
             onCellClick={handleBoardClick}
           />
@@ -190,6 +182,10 @@ const GameRoute = () => {
             onCardClick={handleCardClick}
             canDiscard={canDiscard}
             onDiscard={handleDiscard}
+            turnStartedAt={game?.turnStartedAt}
+            isMyTurn={isMyTurn}
+            onCardHover={setHoveredCard}
+            gameOver={!!state.winner}
           />
         )}
       </main>
@@ -198,6 +194,8 @@ const GameRoute = () => {
 };
 
 // Main App Component with Router
+import { LanguageProvider } from './i18n/LanguageContext';
+
 function App() {
   const { user, signIn, loading } = useAuth();
   const { createGame, joinGame } = useGameConnection();
@@ -234,12 +232,14 @@ function App() {
   if (loading) return <div className="text-white bg-bg-dark h-screen flex items-center justify-center">Authenticating...</div>;
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<MainLobby />} />
-        <Route path="/game/:code" element={<GameRoute />} />
-      </Routes>
-    </BrowserRouter>
+    <LanguageProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<MainLobby />} />
+          <Route path="/game/:code" element={<GameRoute />} />
+        </Routes>
+      </BrowserRouter>
+    </LanguageProvider>
   );
 }
 

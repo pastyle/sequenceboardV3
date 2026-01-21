@@ -5,19 +5,22 @@ interface GameHeaderProps {
     status: string;
     winner: Team | null;
     onReset: () => void;
-    onDebugWin: () => void;
     isMyTurn: boolean;
     roomId?: string;
     turnStartedAt?: number;
     turnTimeLimit?: number; // e.g. 30000
 }
 
-export const GameHeader: React.FC<GameHeaderProps> = ({ status, winner, onReset, onDebugWin, isMyTurn, roomId }) => {
+import { LanguageSelector } from '../components/ui/LanguageSelector';
+import { useLanguage } from '../i18n';
+
+export const GameHeader: React.FC<GameHeaderProps> = ({ status, winner, onReset, isMyTurn, roomId }) => {
+    const { t } = useLanguage();
     return (
         <header className="h-[60px] bg-bg-panel flex items-center justify-between px-8 shadow-md shrink-0 border-b border-white/5">
             <div className="flex items-center gap-6">
                 <div className="text-2xl font-bold tracking-widest bg-gradient-to-tr from-clubs to-hearts bg-clip-text text-transparent select-none cursor-pointer" onClick={onReset}>
-                    SEQUENCE
+                    Sequenc.ia
                 </div>
                 {roomId && (
                     <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded text-xs text-text-secondary border border-white/5 group relative">
@@ -35,19 +38,12 @@ export const GameHeader: React.FC<GameHeaderProps> = ({ status, winner, onReset,
             </div>
 
             <div className="flex items-center gap-4">
-                {/* Debug Button */}
-                <button
-                    onClick={onDebugWin}
-                    className="px-2 py-1 text-xs bg-white/5 hover:bg-white/10 rounded text-text-secondary transition-colors"
-                    title="Setup Win Scenario"
-                >
-                    ⚡ Test Win
-                </button>
+                <LanguageSelector />
 
                 <div className={`font-bold transition-all duration-300 ${winner ? 'text-[#FFD700] text-xl scale-110' :
                     isMyTurn ? 'text-[#FFD700] text-lg' : 'text-white'
                     }`}>
-                    {isMyTurn && !winner ? "YOUR TURN" : status}
+                    {isMyTurn && !winner ? t.game_yourTurn : status}
                 </div>
             </div>
         </header>

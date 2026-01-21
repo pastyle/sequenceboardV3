@@ -7,12 +7,14 @@ interface BoardProps {
     board: BoardState;
     currentPlayer: Player;
     selectedCard: string | null;
+    previewCard?: string | null;
+    lastMove?: { position: { r: number; c: number } };
     winningCells: CellPosition[]; // Cells to highlight as win
     onCellClick: (row: number, col: number) => void;
 }
 
 export const Board: React.FC<BoardProps> = ({
-    board, currentPlayer, selectedCard, winningCells, onCellClick
+    board, currentPlayer, selectedCard, previewCard, lastMove, winningCells, onCellClick
 }) => {
 
     const isWinningPos = (r: number, c: number) => {
@@ -28,11 +30,15 @@ export const Board: React.FC<BoardProps> = ({
                         let isValidTarget = false;
                         let isValidRemove = false;
 
-                        if (selectedCard) {
-                            const move = isValidMove(selectedCard, rowIndex, colIndex, board, currentPlayer.team);
-                            if (move.isValid) {
-                                if (move.type === 'place') isValidTarget = true;
-                                if (move.type === 'remove') isValidRemove = true;
+                        if (selectedCard || previewCard) {
+                            const cardToCheck = selectedCard || previewCard;
+                            // Only check validity if we have a card to check
+                            if (cardToCheck) {
+                                const move = isValidMove(cardToCheck, rowIndex, colIndex, board, currentPlayer.team);
+                                if (move.isValid) {
+                                    if (move.type === 'place') isValidTarget = true;
+                                    if (move.type === 'remove') isValidRemove = true;
+                                }
                             }
                         }
 
@@ -47,6 +53,7 @@ export const Board: React.FC<BoardProps> = ({
                                 isWinningCell={isWinningPos(rowIndex, colIndex)}
                                 isValidTarget={isValidTarget}
                                 isValidRemove={isValidRemove}
+                                isLastMove={lastMove?.position?.r === rowIndex && lastMove?.position?.c === colIndex}
                                 onClick={() => onCellClick(rowIndex, colIndex)}
                             />
                         );
