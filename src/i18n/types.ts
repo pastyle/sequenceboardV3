@@ -42,4 +42,11 @@ export interface TranslationDictionary {
     team: string;
     host: string;
     copy: string;
+
+    // New Lobby Keys
+    lobby_maxCapacity: string;
+    lobby_waitingForOpponents: string; // 'Waiting for opponents...'
+    lobby_playersCount: string; // 'Players: [current] / [max]'
+    lobby_leaveRoom: string;
+    game_exitToLobby: string;
 }

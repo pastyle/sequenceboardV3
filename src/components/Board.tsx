@@ -42,18 +42,24 @@ export const Board: React.FC<BoardProps> = ({
                             }
                         }
 
+                        // Label Logic: Show Card Value (e.g. 6♥) unless it's a Joker (corners)
+                        const isJoker = cell.card === 'Joker';
+                        const cellLabel = isJoker ? '' : cell.card;
+
                         return (
                             <BoardCell
                                 key={`${rowIndex}-${colIndex}`}
                                 row={rowIndex}
                                 col={colIndex}
                                 card={cell.card}
+                                label={cellLabel}
                                 owner={cell.owner}
                                 isLocked={cell.isLocked}
                                 isWinningCell={isWinningPos(rowIndex, colIndex)}
                                 isValidTarget={isValidTarget}
                                 isValidRemove={isValidRemove}
                                 isLastMove={lastMove?.position?.r === rowIndex && lastMove?.position?.c === colIndex}
+                                lastMoveType={lastMove?.position?.r === rowIndex && lastMove?.position?.c === colIndex ? (lastMove as any)?.type : undefined}
                                 onClick={() => onCellClick(rowIndex, colIndex)}
                             />
                         );

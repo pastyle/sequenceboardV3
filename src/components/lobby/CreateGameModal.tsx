@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../../i18n';
 
 interface CreateGameModalProps {
     onClose: () => void;
@@ -9,6 +10,7 @@ interface CreateGameModalProps {
 export const CreateGameModal: React.FC<CreateGameModalProps> = ({ onClose, onCreate, loading }) => {
     const [name, setName] = useState('');
     const [maxPlayers, setMaxPlayers] = useState(2);
+    const { t } = useLanguage();
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -20,7 +22,7 @@ export const CreateGameModal: React.FC<CreateGameModalProps> = ({ onClose, onCre
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-bg-panel p-6 rounded-lg text-white w-96 border border-white/10">
-                <h2 className="text-2xl font-bold mb-4">Create New Game</h2>
+                <h2 className="text-2xl font-bold mb-4">{t.lobby_createGame}</h2>
                 <form onSubmit={handleSubmit}>
                     <div className="mb-4">
                         <label className="block text-sm font-bold mb-2">Your Name</label>
@@ -29,13 +31,13 @@ export const CreateGameModal: React.FC<CreateGameModalProps> = ({ onClose, onCre
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className="w-full p-3 rounded bg-white/10 border border-white/20 focus:border-game-blue outline-none transition-colors placeholder-white/50 text-white"
-                            placeholder="Enter your name"
+                            placeholder={t.lobby_enterName}
                             required
                         />
                     </div>
 
                     <div className="mb-6">
-                        <label className="block text-sm font-bold mb-2">Number of Players</label>
+                        <label className="block text-sm font-bold mb-2">{t.lobby_maxCapacity}</label>
                         <div className="flex gap-4">
                             {[2, 3, 4].map(num => (
                                 <button
@@ -72,7 +74,7 @@ export const CreateGameModal: React.FC<CreateGameModalProps> = ({ onClose, onCre
                             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 transition-colors"
                             disabled={loading || !name.trim()}
                         >
-                            {loading ? 'Creating...' : 'Create Room'}
+                            {loading ? t.lobby_joining : t.lobby_create}
                         </button>
                     </div>
                 </form>

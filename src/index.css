@@ -29,3 +29,15 @@ body {
   scrollbar-width: thin;
   scrollbar-color: #2b2b36 #1e1e24;
 }
+
+/* Custom Pulse to avoid forced box-shadows or borders */
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse-custom {
+  animation: pulse-opacity 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  box-shadow: none !important;
+  border: none !important;
+  outline: none !important;
+}

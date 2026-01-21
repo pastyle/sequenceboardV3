@@ -37,7 +37,12 @@ export const translations: Record<Language, TranslationDictionary> = {
         you: "YOU",
         team: "Team",
         host: "HOST",
-        copy: "Copy"
+        copy: "Copy",
+        lobby_maxCapacity: "Max Capacity",
+        lobby_waitingForOpponents: "Waiting for opponents...",
+        lobby_playersCount: "Players:",
+        lobby_leaveRoom: "Leave Room",
+        game_exitToLobby: "Exit to Lobby"
     },
     pt: {
         lobby_createGame: "Criar Novo Jogo",
@@ -75,7 +80,12 @@ export const translations: Record<Language, TranslationDictionary> = {
         you: "VOCÊ",
         team: "Time",
         host: "HOST",
-        copy: "Copiar"
+        copy: "Copiar",
+        lobby_maxCapacity: "Capacidade Máxima",
+        lobby_waitingForOpponents: "Aguardando oponentes...",
+        lobby_playersCount: "Jogadores:",
+        lobby_leaveRoom: "Sair da Sala",
+        game_exitToLobby: "Sair para o Lobby"
     },
     es: {
         lobby_createGame: "Crear Nuevo Juego",
@@ -113,6 +123,11 @@ export const translations: Record<Language, TranslationDictionary> = {
         you: "TÚ",
         team: "Equipo",
         host: "ANFITRIÓN",
-        copy: "Copiar"
+        copy: "Copiar",
+        lobby_maxCapacity: "Capacidad Máxima",
+        lobby_waitingForOpponents: "Esperando oponentes...",
+        lobby_playersCount: "Jugadores:",
+        lobby_leaveRoom: "Salir de la Sala",
+        game_exitToLobby: "Salir al Lobby"
     }
 };

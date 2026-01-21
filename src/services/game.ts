@@ -233,6 +233,12 @@ export const joinGame = async (roomId: string, playerUid: string, playerName: st
         throw new Error('Game is defined as already playing or finished');
     }
 
+    // 3. Check Capacity
+    const currentPlayers = Object.keys(gameData.players).length;
+    if (currentPlayers >= (gameData.maxPlayers || 4)) {
+        throw new Error('Room is full');
+    }
+
     // Add new player
     const newPlayer: FirestorePlayer = {
         uid: playerUid,
@@ -335,7 +341,8 @@ export const makeMove = async (
         lastMove: {
             playerId: playerUid,
             card: cardUsed,
-            position: { r: row, c: col }
+            position: { r: row, c: col },
+            type: moveType
         }
     };
 

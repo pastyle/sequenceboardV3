@@ -38,6 +38,19 @@ export const GameHeader: React.FC<GameHeaderProps> = ({ status, winner, onReset,
             </div>
 
             <div className="flex items-center gap-4">
+                <button
+                    onClick={() => {
+                        if (window.confirm('Exit to Lobby?')) {
+                            // Simple reload/nav to root for now or proper leave handler passed as prop? 
+                            // Prop isn't there, so window.location.href to '/' is safest "hard exit" or navigate
+                            window.location.href = '/';
+                        }
+                    }}
+                    className="text-white/50 hover:text-white hover:bg-white/10 px-3 py-1.5 rounded transition-colors text-sm font-medium border border-transparent hover:border-white/20"
+                >
+                    {t.game_exitToLobby}
+                </button>
+                <div className="h-6 w-px bg-white/10" />
                 <LanguageSelector />
 
                 <div className={`font-bold transition-all duration-300 ${winner ? 'text-[#FFD700] text-xl scale-110' :

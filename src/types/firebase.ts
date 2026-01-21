@@ -39,6 +39,7 @@ export interface FirestoreGame {
         playerId: string;
         card: string;
         position: { r: number; c: number };
+        type?: 'place' | 'remove';
     };
     winnerTeam?: number;
     winningSequence?: Array<{ r: number; c: number }>;

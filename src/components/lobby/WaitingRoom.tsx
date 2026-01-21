@@ -1,6 +1,7 @@
 import React from 'react';
 import type { FirestoreGame } from '../../types/firebase';
 import type { User } from 'firebase/auth';
+import { useLanguage } from '../../i18n';
 
 interface WaitingRoomProps {
     game: FirestoreGame;
@@ -22,9 +23,10 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
         if (b.isHost) return 1;
         return a.name.localeCompare(b.name);
     });
+    const { t } = useLanguage();
     const isHost = game.players[currentUser?.uid || '']?.isHost;
-    // Constraint: Must match exact maxPlayers to start (for teams balance)
-    const isReady = players.length === game.maxPlayers;
+    // New Constraint: Can start with >= 2 players
+    const isReady = players.length >= 2;
 
     const copyCode = () => {
         navigator.clipboard.writeText(game.roomId);
@@ -42,7 +44,12 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
                     >
                         {game.roomId}
                     </button>
-                    <p className="mt-4 text-xl">Waiting for players... ({players.length}/{game.maxPlayers})</p>
+                    <p className="mt-4 text-xl">{t.lobby_playersCount} {players.length} / {game.maxPlayers}</p>
+                    {players.length < 2 && (
+                        <p className="text-yellow-400 mt-2 border-none outline-none ring-0">
+                            <span className="animate-pulse-custom">{t.lobby_waitingForOpponents}</span>
+                        </p>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -68,7 +75,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
                         onClick={onLeaveGame}
                         className="text-red-400 hover:text-red-300 font-bold px-4 py-2"
                     >
-                        Leave Room
+                        {t.lobby_leaveRoom}
                     </button>
 
                     {isHost && (
@@ -77,7 +84,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
                             disabled={!isReady || loading}
                             className="bg-green-600 hover:bg-green-500 text-white text-lg font-bold px-8 py-3 rounded-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-transform hover:scale-105"
                         >
-                            {loading ? 'Starting...' : 'Start Game'}
+                            {loading ? t.game_loading : t.lobby_startGame}
                         </button>
                     )}
                 </div>

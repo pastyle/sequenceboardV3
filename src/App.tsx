@@ -24,6 +24,42 @@ const GameRoute = () => {
     error
   } = useGameConnection(code || null);
 
+  // --- Minus Card Notification Logic (Moved to Top) ---
+  const [alertInfo, setAlertInfo] = useState<{ title: string; message: string } | null>(null);
+  const lastProcessedMoveRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!game?.lastMove) return;
+
+    // Create a unique ID for this move to avoid re-triggering on re-renders
+    const moveId = `${game.lastMove.playerId}-${game.lastMove.position.r}-${game.lastMove.position.c}-${game.lastMove.type}`;
+
+    if (game.lastMove.type === 'remove' && lastProcessedMoveRef.current !== moveId) {
+      lastProcessedMoveRef.current = moveId;
+
+      // 1. Play Sound
+      const audio = new Audio('/sounds/notification-card-minus.mp3');
+      audio.volume = 0.6;
+      audio.play().catch(e => console.error("Error playing remove sound:", e));
+
+      // 2. Determine Player Name
+      const actingPlayer = game.players[game.lastMove.playerId];
+      const actingName = actingPlayer ? actingPlayer.name : 'Unknown Player';
+
+      // 3. Coordinate Label
+      const rowLabel = String.fromCharCode(65 + game.lastMove.position.r);
+      const colLabel = (game.lastMove.position.c + 1).toString();
+      const coordLabel = `${rowLabel}${colLabel}`;
+
+      // 4. Show Alert Modal
+      setAlertInfo({
+        title: 'Token Removed!',
+        message: `${actingName} removed the token at ${coordLabel}.`
+      });
+    }
+  }, [game?.lastMove, game?.players]);
+  // --- End Minus Card Logic ---
+
   // Ensure auth
   useEffect(() => {
     if (!user && !authLoading) {
@@ -116,10 +152,12 @@ const GameRoute = () => {
     }
   }
 
+
+
   const statusText = winnerText || (isMyTurn ? "YOUR TURN" : `${currentPlayer.name}'s Turn`);
 
   return (
-    <div className="flex flex-col h-screen w-full bg-bg-dark text-text-primary font-outfit overflow-hidden">
+    <div className="flex flex-col h-screen w-full bg-bg-dark text-text-primary font-outfit overflow-hidden relative">
       <GameHeader
         status={statusText}
         winner={state.winner}
@@ -132,6 +170,29 @@ const GameRoute = () => {
       {turnError && (
         <div className="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-8 py-4 rounded-lg shadow-2xl font-bold text-xl animate-bounce">
           {turnError}
+        </div>
+      )}
+
+      {/* Alert Box Modal (Reusable style) */}
+      {alertInfo && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-bg-panel border border-white/20 p-8 rounded-2xl shadow-2xl max-w-md text-center transform scale-100 animate-in zoom-in-95 duration-200">
+            <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-wide drop-shadow-md">
+              ⚠️ {alertInfo.title}
+            </h2>
+            <div className="w-16 h-1 bg-red-500 mx-auto rounded-full mb-6" />
+
+            <p className="text-xl text-white/90 font-medium mb-8 leading-relaxed">
+              {alertInfo.message}
+            </p>
+
+            <button
+              onClick={() => setAlertInfo(null)}
+              className="bg-white/10 hover:bg-white/20 text-white border-2 border-white/40 font-bold px-8 py-3 rounded-full transition-all hover:scale-105 active:scale-95"
+            >
+              CLOSE
+            </button>
+          </div>
         </div>
       )}
 
