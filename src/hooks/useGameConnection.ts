@@ -61,11 +61,11 @@ export const useGameConnection = (initialRoomId: string | null = null) => {
         return () => unsubscribe();
     }, [roomId]);
 
-    const createGame = useCallback(async (userUid: string, userName: string, maxPlayers: number) => {
+    const createGame = useCallback(async (userUid: string, userName: string, maxPlayers: number, isPrivate: boolean, password?: string) => {
         setLoading(true);
         setError(null);
         try {
-            const newRoomId = await createGameService(userUid, userName, maxPlayers);
+            const newRoomId = await createGameService(userUid, userName, maxPlayers, isPrivate, password);
             setRoomId(newRoomId);
             localStorage.setItem('lastGameRoomId', newRoomId);
             localStorage.setItem('lastPlayerName', userName);
@@ -78,11 +78,11 @@ export const useGameConnection = (initialRoomId: string | null = null) => {
         }
     }, []);
 
-    const joinGame = useCallback(async (code: string, userUid: string, userName: string) => {
+    const joinGame = useCallback(async (code: string, userUid: string, userName: string, password?: string) => {
         setLoading(true);
         setError(null);
         try {
-            await joinGameService(code, userUid, userName);
+            await joinGameService(code, userUid, userName, password);
             setRoomId(code);
             localStorage.setItem('lastGameRoomId', code);
             localStorage.setItem('lastPlayerName', userName);

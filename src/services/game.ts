@@ -8,7 +8,9 @@ import {
     deleteField,
     query,
     where,
-    getDocs
+    getDocs,
+    limit,
+    deleteDoc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase/config';
 import type { FirestoreGame, GameStatus, FirestorePlayer } from '../types/firebase';
@@ -73,7 +75,13 @@ const generateDeck = (): string[] => {
 };
 
 // Start: createGame
-export const createGame = async (hostUid: string, hostName: string, maxPlayers: number = 2): Promise<string> => {
+export const createGame = async (
+    hostUid: string,
+    hostName: string,
+    maxPlayers: number = 2,
+    isPrivate: boolean = false,
+    password?: string
+): Promise<string> => {
     let roomId = generateRoomCode();
     let available = await isRoomCodeAvailable(roomId);
 
@@ -93,7 +101,7 @@ export const createGame = async (hostUid: string, hostName: string, maxPlayers: 
     };
 
     // Note: We store the board as a flat array in Firestore
-    const newGameData = {
+    const newGameData: any = {
         roomId: roomId,
         status: 'waiting',
         maxPlayers: maxPlayers,
@@ -104,7 +112,12 @@ export const createGame = async (hostUid: string, hostName: string, maxPlayers: 
         currentTurn: '',
         deck: [],
         createdAt: Date.now(),
+        isPrivate: isPrivate
     };
+
+    if (isPrivate && password) {
+        newGameData.password = password;
+    }
 
     // We write to document with ID = roomId
     await setDoc(doc(db, GAMES_COLLECTION, roomId), newGameData);
@@ -197,7 +210,7 @@ export const startGame = async (roomId: string): Promise<void> => {
     await updateDoc(gameRef, updates);
 };
 
-export const joinGame = async (roomId: string, playerUid: string, playerName: string): Promise<void> => {
+export const joinGame = async (roomId: string, playerUid: string, playerName: string, password?: string): Promise<void> => {
     const gameRef = doc(db, GAMES_COLLECTION, roomId);
     const gameSnap = await getDoc(gameRef);
 
@@ -237,6 +250,13 @@ export const joinGame = async (roomId: string, playerUid: string, playerName: st
     const currentPlayers = Object.keys(gameData.players).length;
     if (currentPlayers >= (gameData.maxPlayers || 4)) {
         throw new Error('Room is full');
+    }
+
+    // 4. Check Password if Private
+    if (gameData.isPrivate) {
+        if (!password || password !== gameData.password) {
+            throw new Error('Invalid Password');
+        }
     }
 
     // Add new player
@@ -486,4 +506,43 @@ export const promoteNewHost = async (roomId: string): Promise<void> => {
             [`players.${newHostUid}.isHost`]: true
         });
     }
+};
+
+export const listActiveGames = (callback: (games: FirestoreGame[]) => void) => {
+    // Note: Removed orderBy('createdAt', 'desc') to avoid requiring a composite index in Firestore.
+    // We sort client-side instead.
+    const q = query(
+        collection(db, GAMES_COLLECTION),
+        where('status', '==', 'waiting'),
+        limit(20)
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        const games: FirestoreGame[] = [];
+        snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            // Convert flat board to 2D
+            const board = Array.isArray(data.board) ? flatToBoard(data.board) : [];
+
+            games.push({
+                id: docSnap.id,
+                ...data,
+                board: board,
+                discardPile: data.discardPile || []
+            } as FirestoreGame);
+        });
+
+        // Client-side sort: Newest first
+        games.sort((a, b) => b.createdAt - a.createdAt);
+
+        callback(games);
+    });
+};
+
+// DEV ONLY: Clear all games
+export const deleteAllGames = async () => {
+    const q = query(collection(db, GAMES_COLLECTION));
+    const snapshot = await getDocs(q);
+    const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
 };

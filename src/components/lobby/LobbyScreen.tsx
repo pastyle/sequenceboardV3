@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
 import { CreateGameModal } from './CreateGameModal';
+import { RoomList } from './RoomList';
+import { JoinGameModal } from './JoinGameModal';
 import { useLanguage } from '../../i18n';
 import { LobbyHeader } from './LobbyHeader';
+import { deleteAllGames } from '../../services/game';
+import type { FirestoreGame } from '../../types/firebase';
 
 interface LobbyScreenProps {
-    onCreateGame: (name: string, maxPlayers: number) => void;
-    onJoinGame: (code: string, name: string) => void;
+    onCreateGame: (name: string, maxPlayers: number, isPrivate: boolean, password?: string) => void;
+    onJoinGame: (code: string, name: string, password?: string) => void;
     loading: boolean;
 }
 
 export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGame, loading }) => {
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [selectedJoinRoom, setSelectedJoinRoom] = useState<FirestoreGame | null>(null);
     const [joinCode, setJoinCode] = useState('');
     const [joinName, setJoinName] = useState('');
     const { t } = useLanguage();
@@ -26,14 +31,14 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
         <div className="min-h-screen flex flex-col bg-bg-dark text-white">
             <LobbyHeader />
 
-            <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <div className="flex-1 flex flex-col items-center justify-center p-4 w-full max-w-7xl mx-auto">
                 <h1 className="text-6xl font-black mb-12 bg-gradient-to-r from-game-red to-game-blue bg-clip-text text-transparent">
                     Sequenc.ia
                 </h1>
 
-                <div className="w-full max-w-md space-y-8">
-                    {/* Actions */}
-                    <div className="space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full items-start">
+                    {/* Left Column: Actions */}
+                    <div className="space-y-4 max-w-md mx-auto w-full">
                         <button
                             onClick={() => setShowCreateModal(true)}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold py-4 rounded-xl transition-colors"
@@ -96,6 +101,33 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
                             </form>
                         </div>
                     </div>
+
+                    {/* Right Column: Room List */}
+                    <div className="bg-white/5 p-6 rounded-xl border border-white/10 h-full min-h-[400px] flex flex-col">
+                        <div className="flex-1">
+                            <RoomList
+                                onJoin={(game) => {
+                                    setSelectedJoinRoom(game);
+                                }}
+                            />
+                            {/* Placeholder for RoomList update */}
+                        </div>
+
+                        {/* Dev Tools */}
+                        <div className="mt-4 pt-4 border-t border-white/10 flex justify-end">
+                            <button
+                                onClick={async () => {
+                                    if (confirm('Are you sure you want to delete ALL games? This cannot be undone.')) {
+                                        await deleteAllGames();
+                                        alert('All games cleared!');
+                                    }
+                                }}
+                                className="text-xs text-red-500 hover:text-red-400 underline"
+                            >
+                                DEV: Clear All Games
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {showCreateModal && (
@@ -103,6 +135,20 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
                         onClose={() => setShowCreateModal(false)}
                         onCreate={onCreateGame}
                         loading={loading}
+                    />
+                )}
+
+                {selectedJoinRoom && (
+                    <JoinGameModal
+                        roomName={selectedJoinRoom.roomId}
+                        isPrivate={!!selectedJoinRoom.isPrivate}
+                        initialName={joinName}
+                        onClose={() => setSelectedJoinRoom(null)}
+                        onJoin={(name, password) => {
+                            setJoinName(name); // Save name for future
+                            onJoinGame(selectedJoinRoom.roomId, name, password);
+                            setSelectedJoinRoom(null);
+                        }}
                     />
                 )}
             </div>

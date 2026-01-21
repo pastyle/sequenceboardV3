@@ -1,47 +1,55 @@
 export type GameStatus = 'waiting' | 'playing' | 'finished';
-export type PlayerColor = 'red' | 'blue' | 'green';
 
-// 10x10 matrix of card IDs (or whatever represents a card on the board)
-// Assuming string for now (e.g., 'JC', '2H', etc.)
-export type BoardMatrix = string[][];
+export interface Position {
+    r: number;
+    c: number;
+}
+
+export interface Card {
+    suit: string;
+    rank: string;
+    twoEyed: boolean;
+    oneEyed: boolean;
+}
 
 export interface FirestorePlayer {
     uid: string;
-    name: string; // "Player 1", "Guest", etc.
-    color?: PlayerColor;
+    name: string;
     isHost: boolean;
     status: 'online' | 'offline';
-    lastSeen: number; // Timestamp for heartbeat
-    hand?: string[]; // Array of card IDs
-    team?: number; // 1 or 2 (or 3)
-    isBot?: boolean; // If true, Bot is playing
+    lastSeen: number;
+    team?: string;
+    hand?: string[];
 }
 
-export interface Room {
-    roomId: string; // The generated 6-char code
-    createdAt: number; // Timestamp
-    createdBy: string; // User UID
+export interface Move {
+    playerId: string;
+    position: Position;
+    card: string;
+    type: 'place' | 'remove';
+    timestamp: number;
 }
 
 export interface FirestoreGame {
-    id: string; // Firestore Document ID (often same as room code or auto-generated)
-    roomId: string; // Readable room code (e.g., 'ABCD')
+    id?: string;
+    roomId: string;
     status: GameStatus;
-    maxPlayers: number; // 2, 3, or 4
-    players: { [uid: string]: FirestorePlayer }; // Map UID -> Player Data
-    board: BoardMatrix;
-    currentTurn: string; // UID of current player
-    turnOrder: string[]; // List of UIDs defining the turn sequence
-    turnStartedAt?: number; // Timestamp when current turn started
-    deck: string[]; // Remaining cards in deck
-    discardPile: string[]; // Cards that have been played/discarded
-    lastMove?: {
-        playerId: string;
-        card: string;
-        position: { r: number; c: number };
-        type?: 'place' | 'remove';
-    };
-    winnerTeam?: number;
-    winningSequence?: Array<{ r: number; c: number }>;
+    maxPlayers: number;
+    players: Record<string, FirestorePlayer>;
     createdAt: number;
+    turnStartedAt?: number;
+
+    // Game State
+    board: string[] | number[]; // It's usually a flat array in DB
+    deck: string[];
+    discardPile: string[];
+    currentTurn?: string; // playerUid
+    currentPlayerIndex: number;
+    winner: string | null;
+    lastMove?: Move;
+    winningCells?: any[];
+
+    // Lobby
+    isPrivate?: boolean;
+    password?: string;
 }
