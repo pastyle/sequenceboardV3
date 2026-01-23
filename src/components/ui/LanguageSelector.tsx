@@ -22,10 +22,10 @@ export const LanguageSelector: React.FC<{ className?: string }> = ({ className }
                     backgroundSize: '12px'
                 }}
             >
-                <option value="en">English</option>
-                <option value="pt">Português</option>
-                <option value="es">Español</option>
+                <option value="en-US">English</option>
+                <option value="pt-BR">Português</option>
+                <option value="es-ES">Español</option>
             </select>
-        </div>
+        </div >
     );
 };

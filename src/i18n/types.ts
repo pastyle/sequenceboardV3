@@ -1,4 +1,4 @@
-export type Language = 'en-US' | 'pt-BR';
+export type Language = 'en-US' | 'pt-BR' | 'es-ES';
 
 export interface Translation {
     [key: string]: string;

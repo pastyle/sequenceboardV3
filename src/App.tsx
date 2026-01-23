@@ -10,7 +10,7 @@ import { useGameConnection } from './hooks/useGameConnection';
 import { LobbyScreen } from './components/lobby/LobbyScreen';
 import { WaitingRoom } from './components/lobby/WaitingRoom';
 import { TurnNotification } from './ui/TurnNotification';
-import { LanguageProvider } from './i18n/LanguageContext';
+import { LanguageProvider, useLanguage } from './i18n/LanguageContext';
 
 // Game Route Wrapper to handle logic
 const GameRoute = () => {
@@ -25,9 +25,14 @@ const GameRoute = () => {
         error
     } = useGameConnection(code || null);
 
+    // Game UI Logic (Moved up for dependencies)
+    const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+    const { state, handleCardClick, handleBoardClick, handleDiscard, canDiscard, resetGame, turnError, localPlayer, isMyTurn } = useGameState(game, user?.uid);
+
     // --- Minus Card Notification Logic (Moved to Top) ---
     const [alertInfo, setAlertInfo] = useState<{ title: string; message: string } | null>(null);
     const lastProcessedMoveRef = useRef<string | null>(null);
+    const { t } = useLanguage();
 
     useEffect(() => {
         if (!game?.lastMove) return;
@@ -35,7 +40,20 @@ const GameRoute = () => {
         // Create a unique ID for this move to avoid re-triggering on re-renders
         const moveId = `${game.lastMove.playerId}-${game.lastMove.position.r}-${game.lastMove.position.c}-${game.lastMove.type}`;
 
-        if (game.lastMove.type === 'remove' && lastProcessedMoveRef.current !== moveId) {
+        // Only show if it's a REMOVE move AND I am the one affected (removedTeam matches my team)
+        // Note: game.lastMove needs to be updated to include removedTeam. checking loose equality or simple existence
+        const isRemove = game.lastMove.type === 'remove';
+        const myTeam = localPlayer?.team;
+        const removedTeam = game.lastMove.removedTeam;
+        const teamMap: Record<number, string> = { 1: 'red', 2: 'blue', 3: 'green' };
+        const removedTeamColor = removedTeam ? teamMap[removedTeam] : null;
+
+        // Check if I am the victim
+        // If removedTeam is present, strict check. If not (legacy/race condition), maybe fallback or skip?
+        // Plan said "Only affected player".
+        const amIVictim = myTeam && removedTeamColor && myTeam === removedTeamColor;
+
+        if (isRemove && amIVictim && lastProcessedMoveRef.current !== moveId) {
             lastProcessedMoveRef.current = moveId;
 
             // 1. Play Sound
@@ -54,11 +72,11 @@ const GameRoute = () => {
 
             // 4. Show Alert Modal
             setAlertInfo({
-                title: 'Token Removed!',
-                message: `${actingName} removed the token at ${coordLabel}.`
+                title: t.game_tokenRemoved,
+                message: `${actingName} ${t.game_tokenRemovedMsg} ${coordLabel}.`
             });
         }
-    }, [game?.lastMove, game?.players]);
+    }, [game?.lastMove, game?.players, localPlayer?.team, t]);
     // --- End Minus Card Logic ---
 
     // Ensure auth
@@ -76,13 +94,17 @@ const GameRoute = () => {
         }
     }, [code, game, gameLoading, error, navigate, user]);
 
-    // Game UI Logic
-    const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-    const { state, handleCardClick, handleBoardClick, handleDiscard, canDiscard, resetGame, turnError, localPlayer, isMyTurn } = useGameState(game, user?.uid);
-
     // Toast Logic
     const [toastMessage, setToastMessage] = useState<{ msg: string, type: 'info' | 'error' } | null>(null);
     const prevPlayersRef = useRef<Record<string, any>>({});
+
+    // Add effect to show error from hook if any (e.g. password wrong)
+    useEffect(() => {
+        if (error) {
+            setToastMessage({ msg: error.message, type: 'error' });
+            setTimeout(() => setToastMessage(null), 5000);
+        }
+    }, [error]);
 
     useEffect(() => {
         if (!state?.players) return;
@@ -108,7 +130,7 @@ const GameRoute = () => {
     }, [state?.players]);
 
     if (authLoading || gameLoading) {
-        return <div className="min-h-screen bg-bg-dark text-white flex items-center justify-center">Loading...</div>;
+        return <div className="min-h-screen bg-bg-dark text-white flex items-center justify-center">{t.game_loading}</div>;
     }
 
     if (!game) return null; // Will redirect
@@ -131,28 +153,22 @@ const GameRoute = () => {
     // Active Game UI
     const currentPlayer = state.players[state.currentPlayerIndex];
 
-    // Winner Display Logic:
-    // If 2v2 (4 players), show Team Name (Red/Blue).
-    // If 2 or 3 players, show Player Name.
+    // Winner Display Logic
     let winnerText = '';
     if (state.winner) {
         if (state.players.length === 4) {
             winnerText = `${state.winner.toUpperCase()} TEAM WINS!`;
         } else {
-            // Find player(s) who won - wait, winner is Team. So we need to map back if 1v1.
-            // Actually for 1v1, Team Red is Player 1.
-            // For 3 players, Team Green is Player 3.
-            // So we can look for players in that team.
             const winningPlayers = state.players.filter(p => p.team === state.winner);
             if (winningPlayers.length === 1) {
-                winnerText = `${winningPlayers[0].name} Wins!`;
+                winnerText = `${winningPlayers[0].name} ${t.game_won}`;
             } else {
-                winnerText = `${state.winner.toUpperCase()} TEAM WINS!`;
+                winnerText = `${state.winner.toUpperCase()} ${t.team.toUpperCase()} ${t.game_won.toUpperCase()}`;
             }
         }
     }
 
-    const statusText = winnerText || (isMyTurn ? "YOUR TURN" : `${currentPlayer.name}'s Turn`);
+    const statusText = winnerText || (isMyTurn ? t.game_yourTurn : t.game_opponentTurn);
 
     return (
         <div className="flex flex-col h-screen w-full bg-bg-dark text-text-primary font-outfit overflow-hidden relative">
@@ -188,7 +204,7 @@ const GameRoute = () => {
                             onClick={() => setAlertInfo(null)}
                             className="bg-white/10 hover:bg-white/20 text-white border-2 border-white/40 font-bold px-8 py-3 rounded-full transition-all hover:scale-105 active:scale-95"
                         >
-                            CLOSE
+                            {t.game_close}
                         </button>
                     </div>
                 </div>
@@ -257,25 +273,46 @@ const MainLobbyWrapper = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { createGame, joinGame } = useGameConnection();
+    const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+
+    // Note: Error handling for join is done in JoinGameModal, not here
 
     const handleCreate = async (name: string, maxPlayers: number, isPrivate: boolean, password?: string) => {
         if (!user) return;
-        const code = await createGame(user.uid, name, maxPlayers, isPrivate, password);
-        navigate(`/game/${code}`);
+        try {
+            localStorage.setItem('lastPlayerName', name);
+            const code = await createGame(user.uid, name, maxPlayers, isPrivate, password);
+            // No navigation here? The hook might handle it or we wait for effect?
+            // The original code navigated.
+            navigate(`/game/${code}`);
+        } catch (e: any) {
+            console.error("Create failed", e);
+            setToastMsg(e.message);
+            setTimeout(() => setToastMsg(null), 3000);
+        }
     };
 
     const handleJoin = async (code: string, name: string, password?: string) => {
         if (!user) return;
+        localStorage.setItem('lastPlayerName', name);
         await joinGame(code, user.uid, name, password);
         navigate(`/game/${code}`);
     };
 
     return (
-        <LobbyScreen
-            onCreateGame={handleCreate}
-            onJoinGame={handleJoin}
-            loading={false}
-        />
+        <>
+            {toastMsg && (
+                <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-lg shadow-xl z-[200] font-bold animate-in slide-in-from-top-4 fade-in">
+                    {toastMsg}
+                </div>
+            )}
+            <LobbyScreen
+                onCreateGame={handleCreate}
+                onJoinGame={handleJoin}
+                loading={false}
+            />
+        </>
     );
 };
 

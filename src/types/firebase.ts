@@ -18,7 +18,7 @@ export interface FirestorePlayer {
     isHost: boolean;
     status: 'online' | 'offline';
     lastSeen: number;
-    team?: string;
+    team?: number;
     hand?: string[];
     color?: string;
     isBot?: boolean;
@@ -30,6 +30,7 @@ export interface Move {
     card: string;
     type: 'place' | 'remove';
     timestamp: number;
+    removedTeam?: number;
 }
 
 export interface FirestoreGame {

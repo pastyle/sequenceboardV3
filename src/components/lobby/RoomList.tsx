@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import type { FirestoreGame } from '../../types/firebase';
 import { listActiveGames } from '../../services/game';
 
+import { useLanguage } from '../../i18n';
+
 interface RoomListProps {
     onJoin: (game: FirestoreGame) => void;
 }
 
 export const RoomList: React.FC<RoomListProps> = ({ onJoin }) => {
     const [games, setGames] = useState<FirestoreGame[]>([]);
+    const { t } = useLanguage();
 
     useEffect(() => {
         const unsubscribe = listActiveGames((activeGames) => {
@@ -29,14 +32,14 @@ export const RoomList: React.FC<RoomListProps> = ({ onJoin }) => {
     if (games.length === 0) {
         return (
             <div className="text-center text-white/40 py-8 border border-dashed border-white/10 rounded-lg">
-                <p>No active rooms found. create one!</p>
+                <p>{t.lobby_noRooms}</p>
             </div>
         );
     }
 
     return (
         <div className="w-full space-y-3">
-            <h3 className="text-white/60 text-sm uppercase font-bold tracking-wider mb-2">Active Rooms</h3>
+            <h3 className="text-white/60 text-sm uppercase font-bold tracking-wider mb-2">{t.lobby_activeRooms}</h3>
             {games.map((game) => {
                 const playerCount = Object.keys(game.players).length;
                 const isFull = playerCount >= game.maxPlayers;
@@ -50,9 +53,9 @@ export const RoomList: React.FC<RoomListProps> = ({ onJoin }) => {
                         <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
                                 <span className="font-mono text-xl font-bold text-white">{game.roomId}</span>
-                                {game.isPrivate && <span title="Private Room">🔒</span>}
+                                {game.isPrivate && <span title={t.lobby_privateRoom}>🔒</span>}
                             </div>
-                            <span className="text-sm text-white/50">Host: <span className="text-white">{host?.name || 'Unknown'}</span></span>
+                            <span className="text-sm text-white/50">{t.lobby_host}: <span className="text-white">{host?.name || 'Unknown'}</span></span>
                         </div>
 
                         <div className="flex items-center gap-6">
@@ -60,7 +63,7 @@ export const RoomList: React.FC<RoomListProps> = ({ onJoin }) => {
                                 <span className={`font-bold text-lg ${getOccupancyColor(playerCount, game.maxPlayers)}`}>
                                     {playerCount} / {game.maxPlayers}
                                 </span>
-                                <p className="text-xs text-white/40">Players</p>
+                                <p className="text-xs text-white/40">{t.waiting_players}</p>
                             </div>
 
                             <button
@@ -71,7 +74,7 @@ export const RoomList: React.FC<RoomListProps> = ({ onJoin }) => {
                                     : 'bg-game-blue text-white hover:brightness-110'
                                     }`}
                             >
-                                {isFull ? 'FULL' : 'JOIN'}
+                                {isFull ? t.lobby_full : t.lobby_join}
                             </button>
                         </div>
                     </div>

@@ -22,11 +22,11 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         localStorage.setItem('game_language', lang);
     };
 
-    const value = {
+    const value = React.useMemo(() => ({
         language,
         setLanguage,
-        t: translations[language]
-    };
+        t: translations[language] || translations['pt-BR']
+    }), [language]);
 
     return (
         <LanguageContext.Provider value={value}>

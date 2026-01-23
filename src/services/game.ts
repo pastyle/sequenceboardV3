@@ -44,6 +44,40 @@ const isRoomCodeAvailable = async (code: string): Promise<boolean> => {
     return snapshot.empty;
 };
 
+// Check if a game exists by roomId
+export const gameExists = async (roomId: string): Promise<boolean> => {
+    try {
+        const gameRef = doc(db, GAMES_COLLECTION, roomId);
+        const gameSnap = await getDoc(gameRef);
+        return gameSnap.exists();
+    } catch (error) {
+        console.error('Error checking game existence:', error);
+        return false;
+    }
+};
+
+// Get basic room information (exists, isPrivate)
+export const getRoomInfo = async (roomId: string): Promise<{ exists: boolean; isPrivate: boolean }> => {
+    try {
+        const gameRef = doc(db, GAMES_COLLECTION, roomId);
+        const gameSnap = await getDoc(gameRef);
+
+        if (!gameSnap.exists()) {
+            return { exists: false, isPrivate: false };
+        }
+
+        const gameData = gameSnap.data() as FirestoreGame;
+        return {
+            exists: true,
+            isPrivate: gameData.isPrivate || false
+        };
+    } catch (error) {
+        console.error('Error getting room info:', error);
+        return { exists: false, isPrivate: false };
+    }
+};
+
+
 // Helper to convert 10x10 matrix to flat string array
 export const boardToFlat = (board: string[][]): string[] => {
     return board.flat();
@@ -148,53 +182,116 @@ export const startGame = async (roomId: string): Promise<void> => {
     }
 
     // Determine hand size
-    // 2 players: 7 cards
-    // 3 players: 6 cards (standard rules usually say 6 for 3 players? User said 7 for 2-3, but 6 for 4. I will follow user req: 7 for 2-3, 6 for 4)
     const handSize = playerCount <= 3 ? 7 : 6;
 
     // Assign Teams & Deal Cards
     const updates: any = {};
 
-    // Determine Turn Order based on alternation
-    let turnOrder: string[] = [];
-    if (playerCount === 4) {
-        // We want T1, T2, T1, T2
-        const redTeam: string[] = [];
-        const blueTeam: string[] = [];
+    // Check if we can reuse existing teams (if player count structure implies same teams)
+    // We only reuse if ALL current players already have a team assigned and the team count matches expected
+    // Actually, simple heuristic: If everyone has a color, and it's valid for this player count, keep it.
+    // For 2 players: teams 1 and 2.
+    // For 3 players: teams 1, 2, 3.
+    // For 4 players: teams 1 and 2 (2 players each).
+    // Let's see if we can just re-shuffle deck and hands, but keep teams/colors.
 
-        playerUids.forEach((uid, index) => {
-            if (index % 2 === 0) redTeam.push(uid);
-            else blueTeam.push(uid);
-        });
+    let keepTeams = true;
+    const currentTeams = new Set<number>();
 
-        // P1(R), P2(B), P3(R), P4(B)
-        turnOrder = [redTeam[0], blueTeam[0], redTeam[1], blueTeam[1]];
-    } else {
-        // For 2 or 3 players, order of joining is fine
-        turnOrder = [...playerUids];
+    // Check validity of current state
+    for (const uid of playerUids) {
+        const p = gameData.players[uid];
+        if (!p.team || !p.color) {
+            keepTeams = false;
+            break;
+        }
+        currentTeams.add(p.team);
     }
 
-    turnOrder.forEach((uid, index) => {
-        // 0-indexed index in turnOrder
-        let team = 0;
-
-        if (playerCount === 2) {
-            // P1 -> Red(1), P2 -> Blue(2)
-            team = index === 0 ? 1 : 2;
-        } else if (playerCount === 3) {
-            // P1 -> Red(1), P2 -> Blue(2), P3 -> Green(3)
-            team = index + 1;
-        } else if (playerCount === 4) {
-            // Alternation: R, B, R, B
-            team = (index % 2) + 1;
+    if (keepTeams) {
+        // Double check team balance specific to player count
+        if (playerCount === 2 && currentTeams.size !== 2) keepTeams = false;
+        if (playerCount === 3 && currentTeams.size !== 3) keepTeams = false;
+        if (playerCount === 4) {
+            // Check 2v2 balance
+            const team1Count = playerUids.filter(uid => gameData.players[uid].team === 1).length;
+            const team2Count = playerUids.filter(uid => gameData.players[uid].team === 2).length;
+            if (team1Count !== 2 || team2Count !== 2) keepTeams = false;
         }
+    }
 
-        // Deal cards
+    // Determine Turn Order based on alternation
+    let turnOrder: string[] = [];
+
+    if (!keepTeams) {
+        // RE-ASSIGN TEAMS LOGIC
+        if (playerCount === 4) {
+            // We want T1, T2, T1, T2
+            const redTeam: string[] = [];
+            const blueTeam: string[] = [];
+
+            // Simple assignment: First 2 red, next 2 blue (or interleaved?)
+            // Let's interleave based on shuffled order or just index
+            // Shuffle players for random teams
+            const shuffledUids = shuffleArray([...playerUids]);
+
+            shuffledUids.forEach((uid, index) => {
+                if (index % 2 === 0) redTeam.push(uid);
+                else blueTeam.push(uid);
+            });
+
+            // P1(R), P2(B), P3(R), P4(B)
+            turnOrder = [redTeam[0], blueTeam[0], redTeam[1], blueTeam[1]];
+
+            // Apply updates
+            turnOrder.forEach((uid, index) => {
+                const team = (index % 2) + 1; // 1, 2, 1, 2
+                updates[`players.${uid}.team`] = team;
+                updates[`players.${uid}.color`] = team === 1 ? 'red' : 'blue';
+            });
+        } else {
+            // For 2 or 3 players
+            turnOrder = shuffleArray([...playerUids]);
+            turnOrder.forEach((uid, index) => {
+                let team = 0;
+                if (playerCount === 2) team = index === 0 ? 1 : 2;
+                else if (playerCount === 3) team = index + 1;
+
+                updates[`players.${uid}.team`] = team;
+                updates[`players.${uid}.color`] = team === 1 ? 'red' : (team === 2 ? 'blue' : 'green');
+            });
+        }
+    } else {
+        // KEEP TEAMS LOGIC - Just determine turn order respecting alternation
+        if (playerCount === 4) {
+            const redTeam = playerUids.filter(uid => gameData.players[uid].team === 1);
+            const blueTeam = playerUids.filter(uid => gameData.players[uid].team === 2);
+            // Shuffle within teams to vary starter?
+            const r = shuffleArray(redTeam);
+            const b = shuffleArray(blueTeam);
+            turnOrder = [r[0], b[0], r[1], b[1]];
+        } else {
+            // 2 or 3 players, just shuffle turn order?
+            // But for 2 players, P1(Red) must play, then P2(Blue). 
+            // If we shuffle turn order, we might get Blue then Red? 
+            // Actually turn order implies color usually? 
+            // "Red starts" is sequence rule.
+            // Let's enforce Red starts if possible, or just shuffle.
+            // The original code used index to assign team.
+            // If we keep teams, we should sort turnOrder by team?
+            // Team 1 (Red), Team 2 (Blue), Team 3 (Green).
+            // So sort players by team.
+            const sortedByTeam = [...playerUids].sort((a, b) => {
+                return (gameData.players[a].team || 0) - (gameData.players[b].team || 0);
+            });
+            turnOrder = sortedByTeam; // 1, 2, 3
+        }
+    }
+
+    // Deal cards (common for both paths)
+    turnOrder.forEach(uid => {
         const hand = deck.splice(0, handSize);
-
-        updates[`players.${uid}.team`] = team;
         updates[`players.${uid}.hand`] = hand;
-        updates[`players.${uid}.color`] = team === 1 ? 'red' : (team === 2 ? 'blue' : 'green');
     });
 
     updates['deck'] = deck;
@@ -206,6 +303,7 @@ export const startGame = async (roomId: string): Promise<void> => {
     updates['board'] = Array(100).fill('');
     updates['winnerTeam'] = deleteField();
     updates['winningSequence'] = deleteField();
+    updates['lastMove'] = deleteField(); // Clear last move
 
     await updateDoc(gameRef, updates);
 };
@@ -311,9 +409,41 @@ export const makeMove = async (
     const flatIndex = row * 10 + col;
 
     // Update board cell
+    let removedTeam: number | undefined;
     if (moveType === 'place') {
         flatBoard[flatIndex] = team; // Store team color as marker
     } else {
+        // Capture who we are removing
+        const cellValue = flatBoard[flatIndex];
+        // cellValue strings are 'red', 'blue', 'green'. Map back to team ID?
+        // Or just store the string. Frontend compares with localPlayer.team (number). 
+        // localPlayer.color is string (red/blue). 
+        // Wait, flatBoard stores 'red'/'blue' strings? 
+        // Let's check: updates[`players.${uid}.color`] = ... 'red'
+        // In startGame: teamId is 1, 2. 
+        // In makeMove: flatBoard[flatIndex] = team. 
+        // Arguments to makeMove: team: string. 
+        // So board stores what comes in `team`.
+        // In BoardCell.tsx, it likely renders based on this string.
+        // So `removedTeam` here will be a string like 'red', 'blue'.
+        // Frontend localPlayer has .team (number) and .color (string). 
+        // My App.tsx logic: const amIVictim = myTeam && removedTeam && myTeam === removedTeam;
+        // myTeam is number. removedTeam will be string. Mismatch!
+        // I should probably convert string back to team number or consistency.
+        // OR update App.tsx to compare colors. 
+        // But let's check what `team` param is in makeMove. 
+        // It is passed from frontend.
+        // In startGame, we set `players.${uid}.color` = 'red'.
+        // So board stores 'red'. 
+        // App.tsx uses `localPlayer.team` (number). 
+        // I should store `removedTeam` as the NUMBER in lastMove if possible, OR string.
+        // It's easier to verify string vs string. 
+        // Let's see map:
+        // red -> 1, blue -> 2, green -> 3.
+        if (cellValue === 'red') removedTeam = 1;
+        else if (cellValue === 'blue') removedTeam = 2;
+        else if (cellValue === 'green') removedTeam = 3;
+
         flatBoard[flatIndex] = ''; // Remove marker
     }
 
@@ -364,7 +494,8 @@ export const makeMove = async (
             playerId: playerUid,
             card: cardUsed,
             position: { r: row, c: col },
-            type: moveType
+            type: moveType,
+            ...(removedTeam !== undefined && { removedTeam })
         }
     };
 
@@ -519,13 +650,36 @@ export const listActiveGames = (callback: (games: FirestoreGame[]) => void) => {
 
     return onSnapshot(q, (snapshot) => {
         const games: FirestoreGame[] = [];
+        const now = Date.now();
+        const MAX_INACTIVITY = 10 * 60 * 1000; // 10 minutes
+
         snapshot.forEach((docSnap) => {
-            const data = docSnap.data();
+            const data = docSnap.data() as FirestoreGame;
+
+            // Check for abandonment
+            const players = data.players || {};
+            const playerUids = Object.keys(players);
+
+            // 1. No players at all
+            if (playerUids.length === 0) {
+                // Delete empty room
+                deleteDoc(docSnap.ref).catch(console.error);
+                return; // Skip adding to list
+            }
+
+            // 2. Host inactive for too long
+            const host = Object.values(players).find(p => p.isHost);
+            if (host && host.lastSeen && (now - host.lastSeen > MAX_INACTIVITY)) {
+                // Delete abandoned room
+                deleteDoc(docSnap.ref).catch(console.error);
+                return; // Skip adding to list
+            }
+
             // Convert flat board to 2D
-            const board = Array.isArray(data.board) ? flatToBoard(data.board) : [];
+            const board = Array.isArray(data.board) ? flatToBoard(data.board as string[]) : [];
 
             games.push({
-                ...data as FirestoreGame,
+                ...data,
                 id: docSnap.id,
                 board: board,
                 discardPile: data.discardPile || []

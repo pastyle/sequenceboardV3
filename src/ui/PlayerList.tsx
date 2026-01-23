@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Player } from '../types/game.types';
 import { twMerge } from 'tailwind-merge';
+import { useLanguage } from '../i18n';
 
 interface PlayerListProps {
     players: Player[];
@@ -38,9 +39,16 @@ const OfflineTimer: React.FC<{ lastSeen?: number }> = ({ lastSeen }) => {
 };
 
 export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerIndex, deckCount, localPlayerUid }) => {
+    const { t } = useLanguage();
+
+    const getTeamName = (team: string) => {
+        const key = `game_team${team.charAt(0).toUpperCase() + team.slice(1)}`;
+        return t[key] || `${team} Team`;
+    };
+
     return (
         <aside className="w-[250px] bg-black/20 p-4 border-r border-white/5 shrink-0 flex flex-col h-full">
-            <h2 className="text-sm text-text-secondary mb-4 uppercase font-bold tracking-wider">Players</h2>
+            <h2 className="text-sm text-text-secondary mb-4 uppercase font-bold tracking-wider">{t.waiting_players}</h2>
 
             <div className="flex-1">
                 {players.map((player, idx) => {
@@ -78,12 +86,12 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerIn
                                     </span>
                                     {isLocalPlayer && (
                                         <span className="bg-white/10 text-[10px] px-1.5 py-0.5 rounded text-white font-extrabold tracking-tighter uppercase whitespace-nowrap">
-                                            VOCÊ
+                                            {t.waiting_you}
                                         </span>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-text-secondary capitalize font-medium">{player.team} Team</span>
+                                    <span className="text-[10px] text-text-secondary capitalize font-medium">{getTeamName(player.team)}</span>
                                     {isOffline && !player.isBot && (
                                         <div className="flex items-center">
                                             <span className="text-[10px] text-orange-400 font-extrabold uppercase tracking-wider">
@@ -100,9 +108,9 @@ export const PlayerList: React.FC<PlayerListProps> = ({ players, currentPlayerIn
             </div>
 
             <div className="mt-8 pt-4 border-t border-white/5">
-                <h3 className="text-[10px] text-text-secondary mb-2 uppercase font-bold tracking-wider">Main Deck</h3>
+                <h3 className="text-[10px] text-text-secondary mb-2 uppercase font-bold tracking-wider">{t.game_mainDeck}</h3>
                 <div className="bg-bg-panel p-3 rounded-lg text-center font-bold text-clubs shadow-inner border border-white/5">
-                    Cards Left: <span className="text-white ml-1">{deckCount}</span>
+                    {t.game_cardsLeft} <span className="text-white ml-1">{deckCount}</span>
                 </div>
             </div>
         </aside>

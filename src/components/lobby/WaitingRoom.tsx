@@ -36,7 +36,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
         <div className="min-h-screen flex flex-col items-center justify-center bg-bg-dark text-white p-4">
             <div className="bg-white/5 p-8 rounded-2xl backdrop-blur-md w-full max-w-2xl border border-white/10">
                 <div className="text-center mb-8">
-                    <h2 className="text-sm uppercase tracking-widest text-white/50 mb-2">Room Code</h2>
+                    <h2 className="text-sm uppercase tracking-widest text-white/50 mb-2">{t.waiting_roomCode}</h2>
                     <button
                         onClick={copyCode}
                         className="text-6xl font-mono font-bold bg-white/10 px-6 py-2 rounded-xl hover:bg-white/20 transition-colors cursor-pointer active:scale-95"

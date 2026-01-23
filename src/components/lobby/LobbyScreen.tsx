@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CreateGameModal } from './CreateGameModal';
 import { RoomList } from './RoomList';
 import { JoinGameModal } from './JoinGameModal';
@@ -17,15 +17,32 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [selectedJoinRoom, setSelectedJoinRoom] = useState<FirestoreGame | null>(null);
     const [joinCode, setJoinCode] = useState('');
-    const [joinName, setJoinName] = useState('');
+    const [lastGameExists, setLastGameExists] = useState(false);
+    const [checkingRoom, setCheckingRoom] = useState(false);
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
     const { t } = useLanguage();
 
-    const handleJoin = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (joinCode && joinName) {
-            onJoinGame(joinCode.toUpperCase(), joinName);
-        }
-    };
+    // Check if the last game still exists
+    useEffect(() => {
+        const checkLastGame = async () => {
+            const lastGameId = localStorage.getItem('lastGameRoomId');
+            if (lastGameId) {
+                const { gameExists } = await import('../../services/game');
+                const exists = await gameExists(lastGameId);
+                setLastGameExists(exists);
+
+                // Clear localStorage if game doesn't exist
+                if (!exists) {
+                    localStorage.removeItem('lastGameRoomId');
+                    localStorage.removeItem('lastPlayerName');
+                }
+            }
+        };
+
+        checkLastGame();
+    }, []);
+
+
 
     return (
         <div className="min-h-screen flex flex-col bg-bg-dark text-white">
@@ -46,7 +63,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
                             {t.lobby_createGame}
                         </button>
 
-                        {localStorage.getItem('lastGameRoomId') && (
+                        {lastGameExists && localStorage.getItem('lastGameRoomId') && (
                             <div className="bg-white/5 p-4 rounded-xl border border-white/10 text-center">
                                 <div className="text-white/60 text-sm mb-2">{t.lobby_previousGame}</div>
                                 <button
@@ -55,11 +72,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
                                         const name = localStorage.getItem('lastPlayerName');
 
                                         if (code && name) {
-                                            setJoinCode(code);
-                                            setJoinName(name);
                                             onJoinGame(code, name);
-                                        } else if (code) {
-                                            setJoinCode(code);
                                         }
                                     }}
                                     className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -71,34 +84,52 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
 
                         <div className="bg-white/10 p-6 rounded-xl backdrop-blur-sm">
                             <h2 className="text-xl font-bold mb-4 text-center">{t.lobby_joinGame}</h2>
-                            <form onSubmit={handleJoin} className="space-y-4">
+                            <div className="flex gap-2">
                                 <input
                                     type="text"
-                                    placeholder={t.lobby_enterName}
-                                    value={joinName}
-                                    onChange={(e) => setJoinName(e.target.value)}
-                                    className="w-full p-3 rounded bg-white/10 border border-white/20 focus:border-game-blue outline-none transition-colors placeholder-white/50 text-white"
-                                    required
+                                    placeholder={t.lobby_roomCodePlaceholder}
+                                    value={joinCode}
+                                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                                    className="flex-1 p-3 rounded bg-white/10 border border-white/20 focus:border-game-blue outline-none transition-colors placeholder-white/50 uppercase font-mono text-white"
+                                    maxLength={6}
                                 />
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        placeholder={t.lobby_roomCodePlaceholder}
-                                        value={joinCode}
-                                        onChange={(e) => setJoinCode(e.target.value)}
-                                        className="flex-1 p-3 rounded bg-white/10 border border-white/20 focus:border-game-blue outline-none transition-colors placeholder-white/50 uppercase font-mono text-white"
-                                        maxLength={6}
-                                        required
-                                    />
-                                    <button
-                                        type="submit"
-                                        disabled={loading || !joinCode || !joinName}
-                                        className="bg-game-blue hover:bg-blue-600 px-6 py-3 rounded font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {loading ? t.lobby_joining : t.lobby_join}
-                                    </button>
-                                </div>
-                            </form>
+                                <button
+                                    onClick={async () => {
+                                        if (joinCode.trim()) {
+                                            setCheckingRoom(true);
+                                            const { getRoomInfo } = await import('../../services/game');
+                                            const roomInfo = await getRoomInfo(joinCode.toUpperCase());
+                                            setCheckingRoom(false);
+
+                                            if (!roomInfo.exists) {
+                                                setToastMessage(t.error_roomNotFound);
+                                                setTimeout(() => setToastMessage(null), 3000);
+                                                return;
+                                            }
+
+                                            // Room exists, create game object with correct privacy status
+                                            const minimalGame: FirestoreGame = {
+                                                roomId: joinCode.toUpperCase(),
+                                                status: 'waiting',
+                                                maxPlayers: 0,
+                                                players: {},
+                                                createdAt: Date.now(),
+                                                board: [],
+                                                deck: [],
+                                                discardPile: [],
+                                                currentPlayerIndex: 0,
+                                                winner: null,
+                                                isPrivate: roomInfo.isPrivate
+                                            };
+                                            setSelectedJoinRoom(minimalGame);
+                                        }
+                                    }}
+                                    disabled={!joinCode.trim() || checkingRoom}
+                                    className="bg-game-blue hover:bg-blue-600 px-6 py-3 rounded font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {checkingRoom ? t.lobby_checkingRoom : t.lobby_join}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -142,14 +173,20 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({ onCreateGame, onJoinGa
                     <JoinGameModal
                         roomName={selectedJoinRoom.roomId}
                         isPrivate={!!selectedJoinRoom.isPrivate}
-                        initialName={joinName}
+                        initialName=""
                         onClose={() => setSelectedJoinRoom(null)}
-                        onJoin={(name, password) => {
-                            setJoinName(name); // Save name for future
-                            onJoinGame(selectedJoinRoom.roomId, name, password);
+                        onJoin={async (name, password) => {
+                            await onJoinGame(selectedJoinRoom.roomId, name, password);
                             setSelectedJoinRoom(null);
                         }}
                     />
+                )}
+
+                {/* Toast Message */}
+                {toastMessage && (
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg animate-in fade-in slide-in-from-bottom-4 z-50">
+                        {toastMessage}
+                    </div>
                 )}
             </div>
         </div>

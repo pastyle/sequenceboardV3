@@ -31,6 +31,10 @@ export const translations: Record<string, Translation> = {
         lobby_reconnect: 'Reconectar ao Jogo',
         lobby_previousGame: 'Jogo Anterior Encontrado',
         lobby_roomCodePlaceholder: 'Ex: ABCD',
+        lobby_activeRooms: 'Salas Ativas',
+        lobby_noRooms: 'Nenhuma sala encontrada. Crie uma!',
+        lobby_full: 'CHEIA',
+        lobby_host: 'Anfitrião',
 
         // Waiting Room
         waiting_title: 'Sala de Espera',
@@ -54,10 +58,42 @@ export const translations: Record<string, Translation> = {
         lobby_waitingForOpponents: 'Aguardando outros jogadores...',
         lobby_leaveRoom: 'Sair da Sala',
         lobby_startGame: 'Iniciar Partida',
+        lobby_password: 'Senha',
+        lobby_optional: 'opcional',
 
         // Game
         game_loading: 'Carregando...',
         game_exitToLobby: 'Sair para o Lobby',
+        game_playAgain: 'Reiniciar Partida',
+        game_gameOver: 'Fim de Jogo',
+        game_room: 'Sala',
+        game_won: 'Venceu!',
+        team: 'Time',
+        game_tokenRemoved: 'Token Removido!',
+        game_tokenRemovedMsg: 'removeu o token em',
+        game_close: 'Fechar',
+        game_mainDeck: 'Baralho Principal',
+        game_cardsLeft: 'Cartas Restantes:',
+        game_teamRed: 'Time Vermelho',
+        game_teamBlue: 'Time Azul',
+        game_teamGreen: 'Time Verde',
+
+        // Errors & Alerts
+        error_invalidPassword: 'Senha Inválida',
+        error_roomFull: 'Sala cheia',
+        error_gameAlreadyStarted: 'Jogo já iniciado',
+        error_roomNotFound: 'Sala não encontrada',
+        lobby_checkingRoom: 'Verificando sala...',
+        lobby_joinRoom: 'Entrar na Sala',
+
+        // Dynamic Lobby Texts
+        lobby_1v1: '1 vs 1 (Vermelho vs Azul)',
+        lobby_1v1v1: '1 vs 1 vs 1 (Vermelho vs Azul vs Verde)',
+        lobby_2v2: '2 vs 2 Times (Vermelho vs Azul)',
+        lobby_privateRoom: 'Sala Privada',
+        lobby_passwordPlaceholder: 'Senha da sala...',
+        lobby_cancel: 'Cancelar',
+        lobby_create: 'Criar',
     },
     'en-US': {
         // Game Header
@@ -89,6 +125,10 @@ export const translations: Record<string, Translation> = {
         lobby_reconnect: 'Reconnect to Game',
         lobby_previousGame: 'Previous Game Found',
         lobby_roomCodePlaceholder: 'Ex: ABCD',
+        lobby_activeRooms: 'Active Rooms',
+        lobby_noRooms: 'No active rooms found. Create one!',
+        lobby_full: 'FULL',
+        lobby_host: 'Host',
 
         // Waiting Room
         waiting_title: 'Waiting Room',
@@ -112,9 +152,136 @@ export const translations: Record<string, Translation> = {
         lobby_waitingForOpponents: 'Waiting for other players...',
         lobby_leaveRoom: 'Leave Room',
         lobby_startGame: 'Start Game',
+        lobby_password: 'Password',
+        lobby_optional: 'optional',
 
         // Game
         game_loading: 'Loading...',
         game_exitToLobby: 'Exit to Lobby',
+        game_playAgain: 'Play Again',
+        game_gameOver: 'Game Over',
+        game_room: 'Room',
+        game_won: 'Wins!',
+        team: 'Team',
+        game_tokenRemoved: 'Token Removed!',
+        game_tokenRemovedMsg: 'removed the token at',
+        game_close: 'Close',
+        game_mainDeck: 'Main Deck',
+        game_cardsLeft: 'Cards Left:',
+        game_teamRed: 'Red Team',
+        game_teamBlue: 'Blue Team',
+        game_teamGreen: 'Green Team',
+
+        // Errors & Alerts
+        error_invalidPassword: 'Invalid Password',
+        error_roomFull: 'Room is full',
+        error_gameAlreadyStarted: 'Game already playing',
+        error_roomNotFound: 'Room not found',
+        lobby_checkingRoom: 'Checking room...',
+        lobby_joinRoom: 'Join Room',
+
+
+        // Dynamic Lobby Texts
+        lobby_1v1: '1 vs 1 (Red vs Blue)',
+        lobby_1v1v1: '1 vs 1 vs 1 (Red vs Blue vs Green)',
+        lobby_2v2: '2 vs 2 Teams (Red vs Blue)',
+        lobby_privateRoom: 'Private Room',
+        lobby_passwordPlaceholder: 'Enter password...',
+        lobby_cancel: 'Cancel',
+        lobby_create: 'Create',
+    },
+    'es-ES': {
+        // Game Header
+        game_waitingForOpponent: 'Esperando oponente...',
+        game_opponentTurn: 'Turno del oponente',
+        game_yourTurn: 'Tu turno',
+        game_gameWon: '¡Ganaste!',
+        game_gameLost: '¡Perdiste!',
+        game_draw: '¡Empate!',
+        game_reset: 'Reiniciar juego',
+        game_copyLink: 'Copiar enlace',
+        game_copied: '¡Copiado!',
+        game_online: 'En línea',
+        game_offline: 'Desconectado',
+
+        // Actions
+        action_discard: 'Descartar y robar',
+        action_confirmDiscard: 'Confirmar descarte',
+        action_cancel: 'Cancelar',
+
+        // Lobby
+        lobby_createGame: 'Crear nuevo juego',
+        lobby_joinGame: 'Unirse con código',
+        lobby_enterName: 'Tu nombre',
+        lobby_enterCode: 'Código de sala',
+        lobby_join: 'Unirse',
+        lobby_joining: 'Uniéndose...',
+        lobby_or: 'O',
+        lobby_reconnect: 'Reconectar al juego',
+        lobby_previousGame: 'Juego anterior encontrado',
+        lobby_roomCodePlaceholder: 'Ej: ABCD',
+        lobby_activeRooms: 'Salas activas',
+        lobby_noRooms: 'No se encontraron salas. ¡Crea una!',
+        lobby_full: 'LLENA',
+        lobby_host: 'Anfitrión',
+
+        // Waiting Room
+        waiting_title: 'Sala de espera',
+        waiting_roomCode: 'Código:',
+        waiting_copy: 'Copiar',
+        waiting_players: 'Jugadores',
+        waiting_waitingForPlayers: 'Esperando jugadores...',
+        waiting_ready: 'Listo',
+        waiting_notReady: 'No listo',
+        waiting_start: 'Iniciar juego',
+        waiting_leave: 'Salir',
+        waiting_host: 'Anfitrión',
+        waiting_you: 'Tú',
+        waiting_minPlayers: 'Mínimo 3 jugadores (modo equipo) o 1v1',
+
+        // New Lobby
+        lobby_maxCapacity: 'Capacidad máx',
+        lobby_passwordRequired: 'Contraseña requerida',
+        lobby_enterPasswordFor: 'Contraseña de sala...',
+        lobby_playersCount: 'Jugadores:',
+        lobby_waitingForOpponents: 'Esperando oponentes...',
+        lobby_leaveRoom: 'Salir de la sala',
+        lobby_startGame: 'Iniciar partida',
+        lobby_password: 'Contraseña',
+        lobby_optional: 'opcional',
+
+        // Game
+        game_loading: 'Cargando...',
+        game_exitToLobby: 'Salir al lobby',
+        game_playAgain: 'Jugar de nuevo',
+        game_gameOver: 'Fin del juego',
+        game_room: 'Sala',
+        game_won: '¡Gana!',
+        team: 'Equipo',
+        game_tokenRemoved: '¡Ficha eliminada!',
+        game_tokenRemovedMsg: 'eliminó la ficha en',
+        game_close: 'Cerrar',
+        game_mainDeck: 'Mazo Principal',
+        game_cardsLeft: 'Cartas Restantes:',
+        game_teamRed: 'Equipo Rojo',
+        game_teamBlue: 'Equipo Azul',
+        game_teamGreen: 'Equipo Verde',
+
+        // Errors & Alerts
+        error_invalidPassword: 'Contraseña incorrecta',
+        error_roomFull: 'Sala llena',
+        error_gameAlreadyStarted: 'Juego ya iniciado',
+        error_roomNotFound: 'Sala no encontrada',
+        lobby_checkingRoom: 'Verificando sala...',
+        lobby_joinRoom: 'Entrar a la sala',
+
+        // Dynamic Lobby Texts
+        lobby_1v1: '1 vs 1 (Rojo vs Azul)',
+        lobby_1v1v1: '1 vs 1 vs 1 (Rojo vs Azul vs Verde)',
+        lobby_2v2: '2 vs 2 Equipos (Rojo vs Azul)',
+        lobby_privateRoom: 'Sala privada',
+        lobby_passwordPlaceholder: 'Ingresa contraseña...',
+        lobby_cancel: 'Cancelar',
+        lobby_create: 'Crear',
     }
 };

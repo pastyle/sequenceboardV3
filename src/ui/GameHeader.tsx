@@ -24,7 +24,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({ status, winner, onReset,
                 </div>
                 {roomId && (
                     <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded text-xs text-text-secondary border border-white/5 group relative">
-                        <span className="uppercase font-bold tracking-wider opacity-60">Room:</span>
+                        <span className="uppercase font-bold tracking-wider opacity-60">{t.game_room}:</span>
                         <span className="font-mono text-white select-all">{roomId}</span>
                         <button
                             onClick={() => navigator.clipboard.writeText(roomId)}

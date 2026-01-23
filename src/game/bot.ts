@@ -63,14 +63,64 @@ export const calculateBotMove = (
         }
     });
 
-    // 3. Return best move
-    possibleMoves.sort((a, b) => b.score - a.score);
+    // Filter out moves with 0 score (useless moves)
+    const usefulMoves = possibleMoves.filter(m => m.score > 0);
 
-    // Add some randomness if scores are equal or low
-    const topScore = possibleMoves[0].score;
-    const bestMoves = possibleMoves.filter(m => m.score >= topScore - 10);
+    if (usefulMoves.length === 0) {
+        // If no useful moves (all score 0), PREFER PLACEMENT.
+        // Save removal cards for when they actually generate a score.
+        const fallbackPlacements = possibleMoves.filter(m => m.moveType === 'place');
+        if (fallbackPlacements.length > 0) {
+            return fallbackPlacements[Math.floor(Math.random() * fallbackPlacements.length)];
+        }
 
-    return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+        // If no placements possible (unlikely), then use whatever is left
+        if (possibleMoves.length > 0) {
+            return possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+        }
+        return null;
+    }
+
+    // 3. Return best move with resource preservation
+    usefulMoves.sort((a, b) => b.score - a.score);
+
+    // Separate placement and removal moves
+    const placementMoves = usefulMoves.filter(m => m.moveType === 'place');
+    const removalMoves = usefulMoves.filter(m => m.moveType === 'remove');
+
+    const bestPlacement = placementMoves.length > 0 ? placementMoves[0] : null;
+    const bestRemoval = removalMoves.length > 0 ? removalMoves[0] : null;
+
+    // Resource preservation: Only use removal if it's significantly better
+    // If we have a removal move that is high score (e.g. 1000 = stopping a win), take it.
+    // If removal is low score (e.g. 30 = just breaking a 3-sequence), do not prefer it over a good placement.
+
+    if (bestRemoval) {
+        // If removal is critical (stopping a win), take it immediately
+        if (bestRemoval.score >= 1000) {
+            return bestRemoval;
+        }
+
+        // If we have a placement
+        if (bestPlacement) {
+            // Calculate threshold. If placement is decent, we need removal to be MUCH better.
+            const removalThreshold = bestPlacement.score * 1.5;
+
+            if (bestRemoval.score < removalThreshold) {
+                return bestPlacement;
+            }
+        }
+    }
+
+    // If we are here, either:
+    // 1. No removal moves
+    // 2. Removal moves exist but aren't critical and aren't better than placement
+    // 3. Only removal moves exist (and they are > 0 score)
+
+    if (bestPlacement) return bestPlacement;
+    if (bestRemoval) return bestRemoval;
+
+    return usefulMoves[0];
 };
 
 function getCardPositionMatches(cardVal: string) {
@@ -115,24 +165,113 @@ function scorePlacement(board: BoardState, r: number, c: number, team: Team): nu
     return score;
 }
 
+/**
+ * Count how many open ends a sequence has (0, 1, or 2)
+ * An "open end" is an empty space that could extend the sequence
+ */
+function countOpenEnds(board: BoardState, r: number, c: number, dr: number, dc: number, team: Team): number {
+    let openEnds = 0;
+
+    // Check forward end
+    let forwardSteps = 0;
+    for (let i = 1; i < 5; i++) {
+        const nr = r + dr * i;
+        const nc = c + dc * i;
+        if (!isValid(nr, nc)) break;
+        if (board[nr][nc].owner === team || isCorner(nr, nc)) {
+            forwardSteps = i;
+        } else {
+            break;
+        }
+    }
+    // Check if there's an empty space right after the sequence
+    const forwardEndR = r + dr * (forwardSteps + 1);
+    const forwardEndC = c + dc * (forwardSteps + 1);
+    if (isValid(forwardEndR, forwardEndC) && !board[forwardEndR][forwardEndC].owner) {
+        openEnds++;
+    }
+
+    // Check backward end
+    let backwardSteps = 0;
+    for (let i = 1; i < 5; i++) {
+        const nr = r - dr * i;
+        const nc = c - dc * i;
+        if (!isValid(nr, nc)) break;
+        if (board[nr][nc].owner === team || isCorner(nr, nc)) {
+            backwardSteps = i;
+        } else {
+            break;
+        }
+    }
+    // Check if there's an empty space right after the sequence
+    const backwardEndR = r - dr * (backwardSteps + 1);
+    const backwardEndC = c - dc * (backwardSteps + 1);
+    if (isValid(backwardEndR, backwardEndC) && !board[backwardEndR][backwardEndC].owner) {
+        openEnds++;
+    }
+
+    return openEnds;
+}
+
+/**
+ * Check if there's enough space for a 5-piece sequence in this direction
+ */
+function hasSpaceForFive(board: BoardState, r: number, c: number, dr: number, dc: number, team: Team): boolean {
+    let totalSpace = 1; // Count the current position
+
+    // Count forward
+    for (let i = 1; i < 5; i++) {
+        const nr = r + dr * i;
+        const nc = c + dc * i;
+        if (!isValid(nr, nc)) break;
+        if (board[nr][nc].owner === team || isCorner(nr, nc) || !board[nr][nc].owner) {
+            totalSpace++;
+        } else {
+            break;
+        }
+    }
+
+    // Count backward
+    for (let i = 1; i < 5; i++) {
+        const nr = r - dr * i;
+        const nc = c - dc * i;
+        if (!isValid(nr, nc)) break;
+        if (board[nr][nc].owner === team || isCorner(nr, nc) || !board[nr][nc].owner) {
+            totalSpace++;
+        } else {
+            break;
+        }
+    }
+
+    return totalSpace >= 5;
+}
+
 function scoreRemoval(board: BoardState, r: number, c: number, _myTeam: Team): number {
     const opponentTeam = board[r][c].owner;
     if (!opponentTeam) return 0;
 
-    let score = 0;
+    // If the piece is locked (part of a completed sequence), NEVER remove it (rules usually say you can't anyway)
+    // But checking here just in case logic allows it. The isValid check usually handles this? 
+    // Actually the rule is you cannot remove a piece from a COMPLETED sequence. 
+    // The board state might track 'isLocked'. 
+    if (board[r][c].isLocked) return 0;
+
+    let maxScore = 0;
     const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
 
     for (let [dr, dc] of directions) {
+        // We need to evaluate the sequence this piece is part of.
+        // We look in both directions to find the full extent of the connected line.
+
         let lineLength = 1;
-        // Check how long the opponent's line WAS
-        // Forward
+        // Check forward
         for (let i = 1; i < 5; i++) {
             const nr = r + dr * i;
             const nc = c + dc * i;
             if (isValid(nr, nc) && (board[nr][nc].owner === opponentTeam || isCorner(nr, nc))) lineLength++;
             else break;
         }
-        // Backward
+        // Check backward
         for (let i = 1; i < 5; i++) {
             const nr = r - dr * i;
             const nc = c - dc * i;
@@ -140,11 +279,41 @@ function scoreRemoval(board: BoardState, r: number, c: number, _myTeam: Team): n
             else break;
         }
 
-        if (lineLength >= 4) score += 200;
-        else if (lineLength === 3) score += 50;
+        // Only score if the sequence is significant
+        if (lineLength >= 4) {
+            // 1. Check open ends (Verification #1)
+            const openEnds = countOpenEnds(board, r, c, dr, dc, opponentTeam);
+
+            // 2. Check Available Space for 5 (Verification #2)
+            const hasSpace = hasSpaceForFive(board, r, c, dr, dc, opponentTeam);
+
+            // If BOTH ends are blocked (openEnds == 0) -> Score 0
+            // If NO space for 5 -> Score 0
+            if (openEnds === 0 || !hasSpace) {
+                // Do not add to score, it's a dead line
+                continue;
+            }
+
+            // If at least one end is open AND there is space for 5
+            if (openEnds > 0 && hasSpace) {
+                // Priority Total (Verification #1)
+                // Returning 1000 ensures this takes priority over almost anything else (preventing a win)
+                // We maximize the score for this particular direction
+                maxScore = Math.max(maxScore, 1000);
+            }
+
+        } else if (lineLength === 3) {
+            // For 3-sequences, apply similar logic but lower score
+            const openEnds = countOpenEnds(board, r, c, dr, dc, opponentTeam);
+            const hasSpace = hasSpaceForFive(board, r, c, dr, dc, opponentTeam);
+
+            if (openEnds > 0 && hasSpace) {
+                maxScore = Math.max(maxScore, 50); // Small preventive value
+            }
+        }
     }
 
-    return score;
+    return maxScore;
 }
 
 function isValid(r: number, c: number) {

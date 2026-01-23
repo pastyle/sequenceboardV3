@@ -37,7 +37,8 @@ export const CreateGameModal: React.FC<CreateGameModalProps> = ({ onClose, onCre
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             className="w-full p-3 rounded bg-white/10 border border-white/20 focus:border-game-blue outline-none transition-colors placeholder-white/50 text-white"
-                            placeholder="Your Name"
+                            placeholder={t.lobby_enterName}
+                            maxLength={20}
                             autoFocus
                             required
                         />
@@ -61,9 +62,9 @@ export const CreateGameModal: React.FC<CreateGameModalProps> = ({ onClose, onCre
                             ))}
                         </div>
                         <p className="text-xs text-white/60 mt-2">
-                            {maxPlayers === 2 && "1 vs 1 (Red vs Blue)"}
-                            {maxPlayers === 3 && "1 vs 1 vs 1 (Red vs Blue vs Green)"}
-                            {maxPlayers === 4 && "2 vs 2 Teams (Red vs Blue)"}
+                            {maxPlayers === 2 && t.lobby_1v1}
+                            {maxPlayers === 3 && t.lobby_1v1v1}
+                            {maxPlayers === 4 && t.lobby_2v2}
                         </p>
                     </div>
 
@@ -76,20 +77,20 @@ export const CreateGameModal: React.FC<CreateGameModalProps> = ({ onClose, onCre
                                 className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                             <span className="font-bold flex items-center gap-2">
-                                Private Room {isPrivate && '🔒'}
+                                {t.lobby_privateRoom} {isPrivate && '🔒'}
                             </span>
                         </label>
 
                         {isPrivate && (
                             <div className="relative">
-                                <label className="block text-sm font-bold mb-2">Room Password</label>
+                                <label className="block text-sm font-bold mb-2">{t.lobby_passwordRequired}</label>
                                 <div className="relative">
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         className="w-full p-3 pr-10 rounded bg-white/10 border border-white/20 focus:border-game-blue outline-none transition-colors text-white"
-                                        placeholder="Enter password..."
+                                        placeholder={t.lobby_passwordPlaceholder}
                                         maxLength={10}
                                         required={isPrivate}
                                     />
@@ -111,14 +112,14 @@ export const CreateGameModal: React.FC<CreateGameModalProps> = ({ onClose, onCre
                             onClick={onClose}
                             className="px-4 py-2 text-white/60 hover:bg-white/10 rounded transition-colors"
                         >
-                            Cancel
+                            {t.lobby_cancel}
                         </button>
                         <button
                             type="submit"
                             disabled={loading || !name}
                             className="bg-game-blue px-4 py-2 rounded hover:brightness-110 disabled:opacity-50 transition-colors"
                         >
-                            {loading ? 'Creating...' : 'Create'}
+                            {loading ? t.lobby_joining : t.lobby_create}
                         </button>
                     </div>
                 </form>
